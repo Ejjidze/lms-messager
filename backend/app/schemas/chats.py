@@ -21,6 +21,9 @@ class ChatMessage(BaseModel):
     sender_name: str
     content: str
     message_type: Literal["text", "image", "file"]
+    attachment_name: str | None = None
+    attachment_url: str | None = None
+    attachment_mime_type: str | None = None
     status: Literal["sent", "delivered", "read"]
     created_at: datetime
 

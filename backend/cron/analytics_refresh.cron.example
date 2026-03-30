@@ -1,0 +1,2 @@
+# Every 15 minutes: refresh analytics summaries for LMS dashboard
+*/15 * * * * cd /Users/nailgabidin/Documents/New\ project\ 2/backend && /usr/bin/env python3 -m app.jobs.refresh_summaries >> /tmp/eduflow-analytics-refresh.log 2>&1

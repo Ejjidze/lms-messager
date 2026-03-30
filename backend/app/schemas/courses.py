@@ -31,9 +31,12 @@ class Course(BaseModel):
     students_count: int
     progress_percent: int
     cover_url: str
+    current_user_progress: int | None = None
+    average_grade: float | None = None
 
     model_config = {"from_attributes": True}
 
 
 class CourseDetails(Course):
     modules: list[Module]
+    enrolled_students_count: int = 0

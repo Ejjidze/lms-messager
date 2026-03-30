@@ -2,6 +2,8 @@ const state = {
   activeRole: "student",
   activeLesson: null,
   activeChatId: 1,
+  nextQuestionId: 3,
+  nextOptionId: 7,
   courses: [
     {
       id: 1,
@@ -131,6 +133,34 @@ const state = {
       ]
     }
   ],
+  quizBuilder: {
+    title: "Проверка знаний по LMS",
+    description: "Тест по ролям пользователей, управлению курсами и встроенному мессенджеру.",
+    lessonId: 4,
+    passingScore: 60,
+    questions: [
+      {
+        id: 1,
+        text: "Какая роль создаёт курсы в системе?",
+        type: "single",
+        options: [
+          { id: 1, text: "Преподаватель", isCorrect: true },
+          { id: 2, text: "Студент", isCorrect: false },
+          { id: 3, text: "Гость", isCorrect: false }
+        ]
+      },
+      {
+        id: 2,
+        text: "Какие возможности должны быть у встроенного мессенджера?",
+        type: "multiple",
+        options: [
+          { id: 4, text: "История сообщений", isCorrect: true },
+          { id: 5, text: "Индикатор печати", isCorrect: true },
+          { id: 6, text: "Редактор ядра ОС", isCorrect: false }
+        ]
+      }
+    ]
+  },
   roleConfig: {
     student: {
       action: "Записаться",
@@ -170,6 +200,21 @@ const profileName = document.getElementById("profileName");
 const profileRole = document.getElementById("profileRole");
 const profileBio = document.getElementById("profileBio");
 const presenceStatus = document.getElementById("presenceStatus");
+const quizBuilder = document.getElementById("quizBuilder");
+const builderRoleBadge = document.getElementById("builderRoleBadge");
+const builderLessonSelect = document.getElementById("builderLessonSelect");
+const builderQuizTitle = document.getElementById("builderQuizTitle");
+const builderQuizDescription = document.getElementById("builderQuizDescription");
+const builderPassingScore = document.getElementById("builderPassingScore");
+const builderQuizMessage = document.getElementById("builderQuizMessage");
+const builderQuestionText = document.getElementById("builderQuestionText");
+const builderQuestionType = document.getElementById("builderQuestionType");
+const builderQuestionMessage = document.getElementById("builderQuestionMessage");
+const optionBuilderList = document.getElementById("optionBuilderList");
+const builderQuestionList = document.getElementById("builderQuestionList");
+const builderPreviewTitle = document.getElementById("builderPreviewTitle");
+const builderPreviewMeta = document.getElementById("builderPreviewMeta");
+const editingQuestionId = document.getElementById("editingQuestionId");
 
 function renderCourses() {
   const search = document.getElementById("courseSearch").value.toLowerCase();
@@ -354,6 +399,169 @@ function updateRole(role) {
   profileRole.textContent = config.profileRole;
   profileBio.textContent = config.profileBio;
   renderCourses();
+  renderQuizBuilder();
+}
+
+function getLessonChoices() {
+  return state.modules.flatMap((module) =>
+    module.lessons.map((lesson) => ({
+      id: lesson.id,
+      label: `${module.title} / ${lesson.title}`
+    }))
+  );
+}
+
+function getEmptyOption() {
+  state.nextOptionId += 1;
+  return { id: state.nextOptionId, text: "", isCorrect: false };
+}
+
+function renderOptionBuilder(options = null) {
+  const sourceOptions = options ?? state.currentDraftOptions ?? [getEmptyOption(), getEmptyOption()];
+  state.currentDraftOptions = sourceOptions;
+  optionBuilderList.innerHTML = sourceOptions
+    .map(
+      (option, index) => `
+        <div class="option-row" data-option-id="${option.id}">
+          <input type="text" class="builder-option-text" value="${option.text}" placeholder="Вариант ответа ${index + 1}">
+          <label>
+            <input type="${builderQuestionType.value === "multiple" ? "checkbox" : "radio"}"
+              name="builder-correct-option"
+              class="builder-option-correct"
+              ${option.isCorrect ? "checked" : ""}>
+            Верный
+          </label>
+          <button type="button" class="ghost-button remove-option-button">Убрать</button>
+        </div>
+      `
+    )
+    .join("");
+
+  document.querySelectorAll(".builder-option-text").forEach((input) => {
+    input.addEventListener("input", (event) => {
+      const row = event.target.closest(".option-row");
+      const option = state.currentDraftOptions.find((item) => item.id === Number(row.dataset.optionId));
+      option.text = event.target.value;
+    });
+  });
+
+  document.querySelectorAll(".builder-option-correct").forEach((input) => {
+    input.addEventListener("change", (event) => {
+      const row = event.target.closest(".option-row");
+      const optionId = Number(row.dataset.optionId);
+      if (builderQuestionType.value === "single") {
+        state.currentDraftOptions.forEach((item) => {
+          item.isCorrect = item.id === optionId;
+        });
+      } else {
+        const option = state.currentDraftOptions.find((item) => item.id === optionId);
+        option.isCorrect = event.target.checked;
+      }
+      renderOptionBuilder([...state.currentDraftOptions]);
+    });
+  });
+
+  document.querySelectorAll(".remove-option-button").forEach((button) => {
+    button.addEventListener("click", (event) => {
+      const row = event.target.closest(".option-row");
+      state.currentDraftOptions = state.currentDraftOptions.filter((item) => item.id !== Number(row.dataset.optionId));
+      if (state.currentDraftOptions.length === 0) {
+        state.currentDraftOptions = [getEmptyOption()];
+      }
+      renderOptionBuilder([...state.currentDraftOptions]);
+    });
+  });
+}
+
+function resetQuestionForm() {
+  editingQuestionId.value = "";
+  builderQuestionText.value = "";
+  builderQuestionType.value = "single";
+  state.currentDraftOptions = [getEmptyOption(), getEmptyOption()];
+  document.getElementById("saveQuestionButton").textContent = "Добавить вопрос";
+  builderQuestionMessage.textContent = "";
+  renderOptionBuilder([...state.currentDraftOptions]);
+}
+
+function renderQuizBuilder() {
+  const builderEnabled = state.activeRole === "teacher" || state.activeRole === "admin";
+  quizBuilder.classList.toggle("is-hidden", !builderEnabled);
+  builderRoleBadge.textContent = builderEnabled ? "Editor Enabled" : "Teacher Only";
+
+  const lessons = getLessonChoices();
+  builderLessonSelect.innerHTML = lessons
+    .map(
+      (lesson) => `
+        <option value="${lesson.id}" ${lesson.id === state.quizBuilder.lessonId ? "selected" : ""}>
+          ${lesson.label}
+        </option>
+      `
+    )
+    .join("");
+
+  builderQuizTitle.value = state.quizBuilder.title;
+  builderQuizDescription.value = state.quizBuilder.description;
+  builderPassingScore.value = state.quizBuilder.passingScore;
+  builderPreviewTitle.textContent = state.quizBuilder.title || "Тест ещё не создан";
+  builderPreviewMeta.textContent = `${state.quizBuilder.questions.length} вопросов`;
+
+  builderQuestionList.innerHTML = state.quizBuilder.questions
+    .map(
+      (question, index) => `
+        <article class="question-card" data-question-id="${question.id}">
+          <div class="question-card-header">
+            <strong>Вопрос ${index + 1}</strong>
+            <span class="course-tag">${question.type === "multiple" ? "Multiple" : "Single"}</span>
+          </div>
+          <p>${question.text}</p>
+          <ul>
+            ${question.options
+              .map(
+                (option) => `
+                  <li>${option.text}${option.isCorrect ? " • верный ответ" : ""}</li>
+                `
+              )
+              .join("")}
+          </ul>
+          <div class="builder-actions">
+            <button type="button" class="ghost-button edit-question-button">Редактировать</button>
+            <button type="button" class="ghost-button delete-question-button">Удалить</button>
+          </div>
+        </article>
+      `
+    )
+    .join("");
+
+  document.querySelectorAll(".edit-question-button").forEach((button) => {
+    button.addEventListener("click", (event) => {
+      const card = event.target.closest(".question-card");
+      const question = state.quizBuilder.questions.find((item) => item.id === Number(card.dataset.questionId));
+      editingQuestionId.value = question.id;
+      builderQuestionText.value = question.text;
+      builderQuestionType.value = question.type;
+      state.currentDraftOptions = question.options.map((option) => ({ ...option }));
+      document.getElementById("saveQuestionButton").textContent = "Сохранить вопрос";
+      builderQuestionMessage.textContent = "Режим редактирования вопроса.";
+      renderOptionBuilder([...state.currentDraftOptions]);
+    });
+  });
+
+  document.querySelectorAll(".delete-question-button").forEach((button) => {
+    button.addEventListener("click", (event) => {
+      const card = event.target.closest(".question-card");
+      state.quizBuilder.questions = state.quizBuilder.questions.filter(
+        (item) => item.id !== Number(card.dataset.questionId)
+      );
+      builderQuestionMessage.textContent = "Вопрос удалён из конструктора.";
+      renderQuizBuilder();
+    });
+  });
+
+  if (!state.currentDraftOptions) {
+    resetQuestionForm();
+  } else {
+    renderOptionBuilder([...state.currentDraftOptions]);
+  }
 }
 
 document.querySelectorAll(".role-button").forEach((button) => {
@@ -371,6 +579,80 @@ document.getElementById("courseSearch").addEventListener("input", renderCourses)
 document.getElementById("categoryFilter").addEventListener("change", renderCourses);
 document.getElementById("levelFilter").addEventListener("change", renderCourses);
 document.getElementById("chatSearch").addEventListener("input", renderChats);
+document.getElementById("addOptionButton").addEventListener("click", () => {
+  state.currentDraftOptions.push(getEmptyOption());
+  renderOptionBuilder([...state.currentDraftOptions]);
+});
+builderQuestionType.addEventListener("change", () => {
+  if (builderQuestionType.value === "single") {
+    let firstMarked = false;
+    state.currentDraftOptions = state.currentDraftOptions.map((option) => {
+      if (option.isCorrect && !firstMarked) {
+        firstMarked = true;
+        return option;
+      }
+      return { ...option, isCorrect: false };
+    });
+  }
+  renderOptionBuilder([...state.currentDraftOptions]);
+});
+
+document.getElementById("quizBuilderForm").addEventListener("submit", (event) => {
+  event.preventDefault();
+  if (!(state.activeRole === "teacher" || state.activeRole === "admin")) {
+    builderQuizMessage.textContent = "Конструктор доступен только преподавателю или администратору.";
+    builderQuizMessage.style.color = "var(--danger)";
+    return;
+  }
+
+  state.quizBuilder.title = builderQuizTitle.value.trim() || "Новый тест";
+  state.quizBuilder.description = builderQuizDescription.value.trim();
+  state.quizBuilder.lessonId = Number(builderLessonSelect.value);
+  state.quizBuilder.passingScore = Number(builderPassingScore.value) || 60;
+  builderQuizMessage.textContent = "Тест сохранён в demo-конструкторе.";
+  builderQuizMessage.style.color = "var(--success)";
+  renderQuizBuilder();
+});
+
+document.getElementById("questionBuilderForm").addEventListener("submit", (event) => {
+  event.preventDefault();
+  if (!(state.activeRole === "teacher" || state.activeRole === "admin")) {
+    builderQuestionMessage.textContent = "Редактор вопросов доступен только преподавателю или администратору.";
+    builderQuestionMessage.style.color = "var(--danger)";
+    return;
+  }
+
+  const text = builderQuestionText.value.trim();
+  const validOptions = state.currentDraftOptions.filter((option) => option.text.trim());
+  const hasCorrect = validOptions.some((option) => option.isCorrect);
+
+  if (!text || validOptions.length < 2 || !hasCorrect) {
+    builderQuestionMessage.textContent = "Нужны текст вопроса, минимум 2 варианта и хотя бы 1 правильный ответ.";
+    builderQuestionMessage.style.color = "var(--danger)";
+    return;
+  }
+
+  const payload = {
+    id: editingQuestionId.value ? Number(editingQuestionId.value) : ++state.nextQuestionId,
+    text,
+    type: builderQuestionType.value,
+    options: validOptions.map((option) => ({ ...option, text: option.text.trim() }))
+  };
+
+  if (editingQuestionId.value) {
+    state.quizBuilder.questions = state.quizBuilder.questions.map((question) =>
+      question.id === payload.id ? payload : question
+    );
+    builderQuestionMessage.textContent = "Вопрос обновлён.";
+  } else {
+    state.quizBuilder.questions.push(payload);
+    builderQuestionMessage.textContent = "Вопрос добавлен в тест.";
+  }
+
+  builderQuestionMessage.style.color = "var(--success)";
+  renderQuizBuilder();
+  resetQuestionForm();
+});
 
 document.getElementById("quizForm").addEventListener("submit", (event) => {
   event.preventDefault();
@@ -446,3 +728,4 @@ renderAssignments();
 renderNotifications();
 renderChats();
 renderMessages();
+renderQuizBuilder();

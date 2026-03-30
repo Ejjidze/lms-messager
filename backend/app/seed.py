@@ -4,7 +4,24 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.core.security import hash_password
-from app.models import Assignment, Chat, Course, Lesson, Message, Module, Notification, User
+from app.models import (
+    Assignment,
+    Chat,
+    Course,
+    Enrollment,
+    Grade,
+    Lesson,
+    Message,
+    Module,
+    Notification,
+    ProgressHistory,
+    Quiz,
+    QuizAttempt,
+    QuizOption,
+    QuizQuestion,
+    Submission,
+    User,
+)
 
 
 def seed_database(db: Session) -> None:
@@ -65,6 +82,16 @@ def seed_database(db: Session) -> None:
     db.add_all([fullstack, ux])
     db.flush()
 
+    db.add(
+        Enrollment(
+            student_id=student.id,
+            course_id=fullstack.id,
+            status="active",
+            enrolled_at=datetime.fromisoformat("2026-03-20T10:00:00"),
+            completed_at=None,
+        )
+    )
+
     module_one = Module(course_id=fullstack.id, title="Модуль 1. Введение в LMS")
     module_two = Module(course_id=fullstack.id, title="Модуль 2. Задания и тесты")
     db.add_all([module_one, module_two])
@@ -95,28 +122,141 @@ def seed_database(db: Session) -> None:
             ),
         ]
     )
+    db.flush()
+
+    quiz = Quiz(
+        course_id=fullstack.id,
+        lesson_id=1,
+        title="Проверка знаний по LMS",
+        description="Базовый тест по ролям, курсам и встроенному мессенджеру.",
+        passing_score=60,
+    )
+    db.add(quiz)
+    db.flush()
+
+    question_one = QuizQuestion(
+        quiz_id=quiz.id,
+        text="Какая роль может создавать курсы?",
+        question_type="single",
+    )
+    question_two = QuizQuestion(
+        quiz_id=quiz.id,
+        text="Какие функции относятся к встроенному мессенджеру LMS?",
+        question_type="multiple",
+    )
+    db.add_all([question_one, question_two])
+    db.flush()
+
+    option_teacher = QuizOption(question_id=question_one.id, text="Преподаватель", is_correct=True)
+    option_student = QuizOption(question_id=question_one.id, text="Студент", is_correct=False)
+    option_guest = QuizOption(question_id=question_one.id, text="Гость", is_correct=False)
+    option_history = QuizOption(question_id=question_two.id, text="История сообщений", is_correct=True)
+    option_typing = QuizOption(question_id=question_two.id, text="Индикатор печати", is_correct=True)
+    option_kernel = QuizOption(question_id=question_two.id, text="Редактор ядра ОС", is_correct=False)
+    db.add_all(
+        [
+            option_teacher,
+            option_student,
+            option_guest,
+            option_history,
+            option_typing,
+            option_kernel,
+        ]
+    )
+    db.flush()
+
+    first_assignment = Assignment(
+        course_id=fullstack.id,
+        title="Спроектировать карточку курса",
+        description="Создать карточку курса с названием, описанием, категорией и CTA-кнопкой.",
+        deadline=datetime.fromisoformat("2026-04-02T18:00:00"),
+        type="file",
+        status="pending",
+    )
+    second_assignment = Assignment(
+        course_id=fullstack.id,
+        title="Написать use case для LMS",
+        description="Описать сценарии использования для студента, преподавателя и администратора.",
+        deadline=datetime.fromisoformat("2026-04-04T20:00:00"),
+        type="text",
+        status="review",
+        grade=92,
+        teacher_comment="Хорошая структура, добавьте кейс модерации.",
+    )
+    db.add_all([first_assignment, second_assignment])
+    db.flush()
+
+    first_submission = Submission(
+        assignment_id=first_assignment.id,
+        student_id=student.id,
+        submitted_text="Подготовил структуру карточки курса и пользовательский сценарий.",
+        submitted_file_name=None,
+        submitted_file_url=None,
+        submitted_file_mime_type=None,
+        status="review",
+        created_at=datetime.fromisoformat("2026-03-28T15:10:00"),
+    )
+    db.add(first_submission)
+    db.flush()
+
+    db.add(
+        Grade(
+            submission_id=first_submission.id,
+            student_id=student.id,
+            teacher_id=teacher.id,
+            score=88,
+            max_score=100,
+            feedback="Хорошая работа, но стоит точнее описать CTA и состояния карточки.",
+            graded_at=datetime.fromisoformat("2026-03-29T11:00:00"),
+        )
+    )
 
     db.add_all(
         [
-            Assignment(
+            ProgressHistory(
+                student_id=student.id,
                 course_id=fullstack.id,
-                title="Спроектировать карточку курса",
-                description="Создать карточку курса с названием, описанием, категорией и CTA-кнопкой.",
-                deadline=datetime.fromisoformat("2026-04-02T18:00:00"),
-                type="file",
-                status="pending",
+                lesson_id=1,
+                event_type="lesson_completed",
+                progress_percent=36,
+                created_at=datetime.fromisoformat("2026-03-27T12:00:00"),
             ),
-            Assignment(
+            ProgressHistory(
+                student_id=student.id,
                 course_id=fullstack.id,
-                title="Написать use case для LMS",
-                description="Описать сценарии использования для студента, преподавателя и администратора.",
-                deadline=datetime.fromisoformat("2026-04-04T20:00:00"),
-                type="text",
-                status="review",
-                grade=92,
-                teacher_comment="Хорошая структура, добавьте кейс модерации.",
+                lesson_id=2,
+                event_type="lesson_completed",
+                progress_percent=72,
+                created_at=datetime.fromisoformat("2026-03-29T16:30:00"),
             ),
         ]
+    )
+    db.flush()
+
+    db.add(
+        QuizAttempt(
+            quiz_id=quiz.id,
+            student_id=student.id,
+            score=200,
+            max_score=200,
+            passed=True,
+            submitted_answers=[
+                {"question_id": question_one.id, "option_ids": [option_teacher.id]},
+                {"question_id": question_two.id, "option_ids": [option_history.id, option_typing.id]},
+            ],
+            created_at=datetime.fromisoformat("2026-03-30T09:00:00"),
+        )
+    )
+
+    db.add(
+        ProgressHistory(
+            student_id=student.id,
+            course_id=fullstack.id,
+            lesson_id=1,
+            event_type="quiz_passed",
+            progress_percent=75,
+            created_at=datetime.fromisoformat("2026-03-30T09:00:00"),
+        )
     )
 
     db.add_all(
@@ -169,6 +309,9 @@ def seed_database(db: Session) -> None:
                 sender_name="Алина",
                 content="Сегодня до 18:00 загружаем макеты на проверку.",
                 message_type="text",
+                attachment_name=None,
+                attachment_url=None,
+                attachment_mime_type=None,
                 status="read",
                 created_at=datetime.fromisoformat("2026-03-30T09:20:00"),
             ),
@@ -178,6 +321,9 @@ def seed_database(db: Session) -> None:
                 sender_name="Назир",
                 content="Принято, добавлю экран мессенджера и панель курсов.",
                 message_type="text",
+                attachment_name=None,
+                attachment_url=None,
+                attachment_mime_type=None,
                 status="read",
                 created_at=datetime.fromisoformat("2026-03-30T09:27:00"),
             ),
@@ -187,6 +333,9 @@ def seed_database(db: Session) -> None:
                 sender_name="Алина",
                 content="Если понадобится, могу отдельно проверить структуру курсовой работы.",
                 message_type="text",
+                attachment_name=None,
+                attachment_url=None,
+                attachment_mime_type=None,
                 status="read",
                 created_at=datetime.fromisoformat("2026-03-29T18:30:00"),
             ),
@@ -196,6 +345,9 @@ def seed_database(db: Session) -> None:
                 sender_name="Система",
                 content="Поступила жалоба на контент курса SMM Sprint.",
                 message_type="text",
+                attachment_name=None,
+                attachment_url=None,
+                attachment_mime_type=None,
                 status="delivered",
                 created_at=datetime.fromisoformat("2026-03-30T08:02:00"),
             ),

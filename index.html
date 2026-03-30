@@ -147,15 +147,63 @@
             </div>
             <span class="badge">Автопроверка</span>
           </div>
-          <form id="quizForm" class="quiz-form">
-            <p class="question-title">Какие функции обязательны для встроенного мессенджера LMS?</p>
-            <label><input type="checkbox" name="quiz" value="history"> История сообщений</label>
-            <label><input type="checkbox" name="quiz" value="typing"> Индикатор "печатает..."</label>
-            <label><input type="checkbox" name="quiz" value="roles"> Роли пользователей</label>
-            <label><input type="checkbox" name="quiz" value="pagination"> Пагинация старых сообщений</label>
-            <button type="submit" class="primary-button">Проверить результат</button>
-            <p id="quizResult" class="quiz-result"></p>
-          </form>
+          <div class="quiz-stack">
+            <form id="quizForm" class="quiz-form">
+              <p class="question-title">Какие функции обязательны для встроенного мессенджера LMS?</p>
+              <label><input type="checkbox" name="quiz" value="history"> История сообщений</label>
+              <label><input type="checkbox" name="quiz" value="typing"> Индикатор "печатает..."</label>
+              <label><input type="checkbox" name="quiz" value="roles"> Роли пользователей</label>
+              <label><input type="checkbox" name="quiz" value="pagination"> Пагинация старых сообщений</label>
+              <button type="submit" class="primary-button">Проверить результат</button>
+              <p id="quizResult" class="quiz-result"></p>
+            </form>
+
+            <div class="quiz-builder" id="quizBuilder">
+              <div class="builder-header">
+                <div>
+                  <p class="section-label">Quiz Builder</p>
+                  <h4>Конструктор тестов</h4>
+                </div>
+                <span class="badge accent" id="builderRoleBadge">Teacher Only</span>
+              </div>
+
+              <form id="quizBuilderForm" class="builder-form">
+                <input type="text" id="builderQuizTitle" placeholder="Название теста">
+                <textarea id="builderQuizDescription" rows="3" placeholder="Описание теста"></textarea>
+                <div class="builder-grid">
+                  <select id="builderLessonSelect"></select>
+                  <input type="number" id="builderPassingScore" min="1" max="100" value="60" placeholder="Проходной балл">
+                </div>
+                <button type="submit" class="primary-button">Сохранить тест</button>
+                <p id="builderQuizMessage" class="builder-message"></p>
+              </form>
+
+              <form id="questionBuilderForm" class="builder-form">
+                <input type="hidden" id="editingQuestionId">
+                <textarea id="builderQuestionText" rows="3" placeholder="Текст вопроса"></textarea>
+                <select id="builderQuestionType">
+                  <option value="single">Один правильный ответ</option>
+                  <option value="multiple">Несколько правильных ответов</option>
+                </select>
+
+                <div class="option-builder-list" id="optionBuilderList"></div>
+
+                <div class="builder-actions">
+                  <button type="button" class="ghost-button" id="addOptionButton">Добавить вариант</button>
+                  <button type="submit" class="primary-button" id="saveQuestionButton">Добавить вопрос</button>
+                </div>
+                <p id="builderQuestionMessage" class="builder-message"></p>
+              </form>
+
+              <div class="builder-preview">
+                <div class="builder-preview-header">
+                  <strong id="builderPreviewTitle">Тест ещё не создан</strong>
+                  <span class="course-tag" id="builderPreviewMeta">0 вопросов</span>
+                </div>
+                <div class="builder-question-list" id="builderQuestionList"></div>
+              </div>
+            </div>
+          </div>
         </article>
 
         <article class="card panel" id="notifications">
