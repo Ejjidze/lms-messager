@@ -187,3 +187,4 @@ ws://127.0.0.1:8000/ws/chats/{chat_id}?token=<access_token>
 - добавить UI-формы для конструктора тестов и редактора вопросов
 - при необходимости вынести фоновую задачу с cron на Celery worker
 # lms-messager
+# lms-messager
