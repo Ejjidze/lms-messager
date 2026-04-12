@@ -19,6 +19,10 @@ class User(Base):
     online: Mapped[bool] = mapped_column(Boolean, default=False)
 
     taught_courses: Mapped[list["Course"]] = relationship(back_populates="teacher")
+    created_assignments: Mapped[list["Assignment"]] = relationship(
+        back_populates="created_by_teacher",
+        foreign_keys="Assignment.created_by_teacher_id",
+    )
     enrollments: Mapped[list["Enrollment"]] = relationship(back_populates="student")
     grades_received: Mapped[list["Grade"]] = relationship(
         back_populates="student",
@@ -138,6 +142,7 @@ class Quiz(Base):
     lesson_id: Mapped[int | None] = mapped_column(ForeignKey("lessons.id"), index=True, nullable=True)
     title: Mapped[str] = mapped_column(String(255))
     description: Mapped[str] = mapped_column(Text, default="")
+    deadline: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
     passing_score: Mapped[int] = mapped_column(Integer, default=60)
 
     course: Mapped["Course"] = relationship(back_populates="quizzes")
@@ -190,15 +195,24 @@ class Assignment(Base):
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
     course_id: Mapped[int] = mapped_column(ForeignKey("courses.id"), index=True)
+    created_by_teacher_id: Mapped[int | None] = mapped_column(ForeignKey("users.id"), index=True, nullable=True)
     title: Mapped[str] = mapped_column(String(255))
     description: Mapped[str] = mapped_column(Text)
     deadline: Mapped[datetime] = mapped_column(DateTime)
+    max_score: Mapped[int] = mapped_column(Integer, default=100)
     type: Mapped[str] = mapped_column(String(50))
     status: Mapped[str] = mapped_column(String(50), default="pending")
     grade: Mapped[int | None] = mapped_column(Integer, nullable=True)
     teacher_comment: Mapped[str | None] = mapped_column(Text, nullable=True)
+    material_file_name: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    material_file_url: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    material_file_mime_type: Mapped[str | None] = mapped_column(String(120), nullable=True)
 
     course: Mapped["Course"] = relationship(back_populates="assignments")
+    created_by_teacher: Mapped["User | None"] = relationship(
+        back_populates="created_assignments",
+        foreign_keys=[created_by_teacher_id],
+    )
     submissions: Mapped[list["Submission"]] = relationship(back_populates="assignment", cascade="all, delete-orphan")
 
 

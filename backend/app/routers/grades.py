@@ -24,13 +24,28 @@ def grade_submission(
     if not submission:
         raise HTTPException(status_code=404, detail="Submission не найден.")
 
-    if current_user.role != "admin" and not is_course_teacher(submission.assignment.course_id, current_user, db):
-        raise HTTPException(status_code=403, detail="Оценивать может только преподаватель курса или администратор.")
+    if current_user.role != "admin":
+        if current_user.role != "teacher":
+            raise HTTPException(status_code=403, detail="Оценивать может только преподаватель или администратор.")
+        is_assignment_author = submission.assignment.created_by_teacher_id == current_user.id
+        if not is_assignment_author and not is_course_teacher(submission.assignment.course_id, current_user, db):
+            raise HTTPException(
+                status_code=403,
+                detail="Оценивать может автор задания, преподаватель курса или администратор.",
+            )
+    if payload.score < 0:
+        raise HTTPException(status_code=400, detail="Оценка не может быть отрицательной.")
+    assignment_max_score = submission.assignment.max_score or 100
+    if payload.score > assignment_max_score:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Оценка не может превышать максимальный балл задания ({assignment_max_score}).",
+        )
 
     grade = db.scalar(select(Grade).where(Grade.submission_id == submission_id))
     if grade:
         grade.score = payload.score
-        grade.max_score = payload.max_score
+        grade.max_score = assignment_max_score
         grade.feedback = payload.feedback
         grade.graded_at = datetime.utcnow()
     else:
@@ -39,7 +54,7 @@ def grade_submission(
             student_id=submission.student_id,
             teacher_id=current_user.id,
             score=payload.score,
-            max_score=payload.max_score,
+            max_score=assignment_max_score,
             feedback=payload.feedback,
             graded_at=datetime.utcnow(),
         )
@@ -64,7 +79,9 @@ def get_submission_grade(
 
     if current_user.role == "student" and grade.student_id != current_user.id:
         raise HTTPException(status_code=403, detail="Нет доступа к этой оценке.")
-    if current_user.role == "teacher" and not is_course_teacher(grade.submission.assignment.course_id, current_user, db):
-        raise HTTPException(status_code=403, detail="Нет доступа к этой оценке.")
+    if current_user.role == "teacher":
+        is_assignment_author = grade.submission.assignment.created_by_teacher_id == current_user.id
+        if not is_assignment_author and not is_course_teacher(grade.submission.assignment.course_id, current_user, db):
+            raise HTTPException(status_code=403, detail="Нет доступа к этой оценке.")
 
     return GradeResponse.model_validate(grade)

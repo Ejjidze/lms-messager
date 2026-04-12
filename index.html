@@ -3,330 +3,168 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>EduFlow LMS</title>
+  <title>EduFlow LMS - Dashboard</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=Space+Grotesk:wght@500;700&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Manrope:wght@500;700;800&display=swap" rel="stylesheet">
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css" rel="stylesheet">
   <link rel="stylesheet" href="styles.css">
 </head>
-<body>
-  <div class="app-shell">
-    <aside class="sidebar">
-      <div class="brand">
-        <div class="brand-mark">EF</div>
-        <div>
-          <p class="eyebrow">Learning Platform</p>
-          <h1>EduFlow LMS</h1>
+<body data-protected-page="true">
+  <nav class="navbar navbar-light bg-white border-bottom shadow-sm sticky-top app-navbar">
+    <div class="container-fluid px-3 px-lg-4">
+      <a class="navbar-brand d-flex align-items-center gap-3 me-4" href="/dashboard">
+        <span class="brand-mark">EF</span>
+        <span class="brand-copy">
+          <span class="brand-kicker">Learning Platform</span>
+          <span class="brand-title">EduFlow LMS</span>
+        </span>
+      </a>
+
+      <div class="d-flex align-items-center gap-2 gap-lg-3 ms-auto topbar-meta">
+        <div class="topbar-time d-none d-md-grid">
+          <span>Время сервера</span>
+          <strong>31.03.2026 | 09:08</strong>
         </div>
+
+        <button class="btn btn-outline-secondary btn-sm" type="button" data-logout-button>Выйти</button>
+        <div class="topbar-avatar" data-user-avatar>NG</div>
       </div>
+    </div>
+  </nav>
 
-      <div class="role-switcher card">
-        <p class="section-label">Режим пользователя</p>
-        <div class="role-buttons">
-          <button class="role-button active" data-role="student">Студент</button>
-          <button class="role-button" data-role="teacher">Преподаватель</button>
-          <button class="role-button" data-role="admin">Администратор</button>
+  <div class="container-fluid py-4 app-page">
+    <div class="row g-4">
+      <aside class="col-12 col-xl-3">
+        <div class="d-grid gap-4 sidebar-stack">
+          <section class="card shadow-sm border-0">
+            <div class="card-body">
+              <p class="section-label mb-3">Навигация</p>
+              <nav class="main-nav">
+                <a href="/dashboard" class="nav-link active">Дашборд</a>
+                <a href="/schedule" class="nav-link">Расписание</a>
+                <a href="/assignments" class="nav-link">Задания</a>
+                <a href="/directory" class="nav-link">Пользователи</a>
+                <a href="/messenger" class="nav-link">Мессенджер</a>
+                <a href="/profile" class="nav-link">Профиль</a>
+                <a href="/admin" class="nav-link">Админ-панель</a>
+              </nav>
+            </div>
+          </section>
         </div>
-      </div>
+      </aside>
 
-      <nav class="main-nav card">
-        <a href="#dashboard" class="nav-link active">Дашборд</a>
-        <a href="#courses" class="nav-link">Курсы</a>
-        <a href="#learning" class="nav-link">Обучение</a>
-        <a href="#assignments" class="nav-link">Задания</a>
-        <a href="#tests" class="nav-link">Тесты</a>
-        <a href="#messenger" class="nav-link">Мессенджер</a>
-        <a href="#notifications" class="nav-link">Уведомления</a>
-        <a href="#profile" class="nav-link">Профиль</a>
-        <a href="#admin" class="nav-link">Админ-панель</a>
-      </nav>
-
-      <div class="security card">
-        <p class="section-label">Нефункциональные требования</p>
-        <ul>
-          <li>Хэширование паролей</li>
-          <li>Роли и контроль доступа</li>
-          <li>Защита от SQL-инъекций</li>
-          <li>WebSocket для чатов</li>
-        </ul>
-      </div>
-    </aside>
-
-    <main class="content">
-      <section class="hero card" id="dashboard">
-        <div>
-          <p class="eyebrow">LMS + Messenger</p>
-          <h2>Платформа для онлайн-обучения со встроенным корпоративным чатом</h2>
-          <p class="hero-copy">
-            Управляйте курсами, уроками, заданиями и тестами в одной системе. Общение между студентами,
-            преподавателями и администраторами происходит внутри платформы без перехода в сторонние мессенджеры.
-          </p>
-        </div>
-        <div class="hero-stats">
-          <div>
-            <span>1280</span>
-            <p>Пользователей</p>
-          </div>
-          <div>
-            <span>96</span>
-            <p>Курсов</p>
-          </div>
-          <div>
-            <span>14</span>
-            <p>Активных чатов</p>
-          </div>
-        </div>
-      </section>
-
-      <section class="grid two-up">
-        <article class="card panel" id="courses">
-          <div class="panel-header">
-            <div>
-              <p class="section-label">Управление курсами</p>
-              <h3>Каталог курсов</h3>
+      <main class="col-12 col-xl-9">
+        <div class="d-grid gap-4">
+          <section class="card border-0 shadow-sm hero-card">
+            <div class="card-body p-4 p-xl-5">
+              <p class="section-label mb-2">Dashboard</p>
+              <h1 class="display-5 fw-bold mb-3 hero-title">Панель управления LMS со встроенным мессенджером</h1>
+              <p class="text-secondary mb-0 hero-copy">
+                Это главная страница системы. Отсюда можно перейти в отдельные разделы: расписание, задания,
+                тесты, мессенджер, профиль и административную панель.
+              </p>
             </div>
-            <button class="ghost-button" id="roleActionButton">Записаться</button>
-          </div>
+          </section>
 
-          <div class="filters">
-            <input type="search" id="courseSearch" placeholder="Поиск курса">
-            <select id="categoryFilter">
-              <option value="all">Все категории</option>
-              <option value="Programming">Programming</option>
-              <option value="Design">Design</option>
-              <option value="Marketing">Marketing</option>
-            </select>
-            <select id="levelFilter">
-              <option value="all">Все уровни</option>
-              <option value="Beginner">Beginner</option>
-              <option value="Intermediate">Intermediate</option>
-              <option value="Advanced">Advanced</option>
-            </select>
-          </div>
-
-          <div class="course-list" id="courseList"></div>
-        </article>
-
-        <article class="card panel" id="learning">
-          <div class="panel-header">
-            <div>
-              <p class="section-label">Структура курса</p>
-              <h3>Модули и уроки</h3>
-            </div>
-            <span class="badge accent">72% завершено</span>
-          </div>
-
-          <div class="module-list" id="moduleList"></div>
-          <div class="lesson-view">
-            <h4 id="lessonTitle">Введение в платформу</h4>
-            <p id="lessonDescription">
-              Выберите урок, чтобы посмотреть его описание, материалы, видео и дополнительные файлы.
-            </p>
-            <div class="lesson-meta" id="lessonMeta"></div>
-          </div>
-        </article>
-      </section>
-
-      <section class="grid three-up">
-        <article class="card panel" id="assignments">
-          <div class="panel-header">
-            <div>
-              <p class="section-label">Assignments</p>
-              <h3>Задания</h3>
-            </div>
-            <span class="badge">3 новых</span>
-          </div>
-          <div class="assignment-list" id="assignmentList"></div>
-        </article>
-
-        <article class="card panel" id="tests">
-          <div class="panel-header">
-            <div>
-              <p class="section-label">Testing</p>
-              <h3>Мини-тест</h3>
-            </div>
-            <span class="badge">Автопроверка</span>
-          </div>
-          <div class="quiz-stack">
-            <form id="quizForm" class="quiz-form">
-              <p class="question-title">Какие функции обязательны для встроенного мессенджера LMS?</p>
-              <label><input type="checkbox" name="quiz" value="history"> История сообщений</label>
-              <label><input type="checkbox" name="quiz" value="typing"> Индикатор "печатает..."</label>
-              <label><input type="checkbox" name="quiz" value="roles"> Роли пользователей</label>
-              <label><input type="checkbox" name="quiz" value="pagination"> Пагинация старых сообщений</label>
-              <button type="submit" class="primary-button">Проверить результат</button>
-              <p id="quizResult" class="quiz-result"></p>
-            </form>
-
-            <div class="quiz-builder" id="quizBuilder">
-              <div class="builder-header">
-                <div>
-                  <p class="section-label">Quiz Builder</p>
-                  <h4>Конструктор тестов</h4>
-                </div>
-                <span class="badge accent" id="builderRoleBadge">Teacher Only</span>
+          <div class="row g-4">
+            <div class="col-12 col-md-6 col-xxl-3">
+              <div class="stat-card h-100">
+                <span>1280</span>
+                <p>Пользователей</p>
               </div>
-
-              <form id="quizBuilderForm" class="builder-form">
-                <input type="text" id="builderQuizTitle" placeholder="Название теста">
-                <textarea id="builderQuizDescription" rows="3" placeholder="Описание теста"></textarea>
-                <div class="builder-grid">
-                  <select id="builderLessonSelect"></select>
-                  <input type="number" id="builderPassingScore" min="1" max="100" value="60" placeholder="Проходной балл">
-                </div>
-                <button type="submit" class="primary-button">Сохранить тест</button>
-                <p id="builderQuizMessage" class="builder-message"></p>
-              </form>
-
-              <form id="questionBuilderForm" class="builder-form">
-                <input type="hidden" id="editingQuestionId">
-                <textarea id="builderQuestionText" rows="3" placeholder="Текст вопроса"></textarea>
-                <select id="builderQuestionType">
-                  <option value="single">Один правильный ответ</option>
-                  <option value="multiple">Несколько правильных ответов</option>
-                </select>
-
-                <div class="option-builder-list" id="optionBuilderList"></div>
-
-                <div class="builder-actions">
-                  <button type="button" class="ghost-button" id="addOptionButton">Добавить вариант</button>
-                  <button type="submit" class="primary-button" id="saveQuestionButton">Добавить вопрос</button>
-                </div>
-                <p id="builderQuestionMessage" class="builder-message"></p>
-              </form>
-
-              <div class="builder-preview">
-                <div class="builder-preview-header">
-                  <strong id="builderPreviewTitle">Тест ещё не создан</strong>
-                  <span class="course-tag" id="builderPreviewMeta">0 вопросов</span>
-                </div>
-                <div class="builder-question-list" id="builderQuestionList"></div>
+            </div>
+            <div class="col-12 col-md-6 col-xxl-3">
+              <div class="stat-card h-100">
+                <span>96</span>
+                <p>Курсов</p>
+              </div>
+            </div>
+            <div class="col-12 col-md-6 col-xxl-3">
+              <div class="stat-card h-100">
+                <span>14</span>
+                <p>Активных чатов</p>
+              </div>
+            </div>
+            <div class="col-12 col-md-6 col-xxl-3">
+              <div class="stat-card h-100">
+                <span>89%</span>
+                <p>Средний прогресс</p>
               </div>
             </div>
           </div>
-        </article>
 
-        <article class="card panel" id="notifications">
-          <div class="panel-header">
-            <div>
-              <p class="section-label">Notifications</p>
-              <h3>События системы</h3>
+          <div class="row g-4">
+            <div class="col-12 col-xxl-6">
+              <section class="card border-0 shadow-sm h-100">
+                <div class="card-body p-4">
+                  <p class="section-label mb-1">Быстрый обзор</p>
+                  <h3 class="h4 mb-3">Что доступно в системе</h3>
+                  <div class="assignment-list">
+                    <article class="assignment-card">
+                      <div class="assignment-card-header">
+                        <strong>Расписание</strong>
+                        <span class="course-tag">Отдельная страница</span>
+                      </div>
+                      <p>Просмотр учебной недели по дням и времени.</p>
+                    </article>
+                    <article class="assignment-card">
+                      <div class="assignment-card-header">
+                        <strong>Задания и тесты</strong>
+                        <span class="course-tag">Контроль знаний</span>
+                      </div>
+                      <p>Отправка работ, дедлайны, квизы и результаты.</p>
+                    </article>
+                    <article class="assignment-card">
+                      <div class="assignment-card-header">
+                        <strong>Мессенджер</strong>
+                        <span class="course-tag">Realtime</span>
+                      </div>
+                      <p>Личные, групповые и административные чаты внутри LMS.</p>
+                    </article>
+                  </div>
+                </div>
+              </section>
             </div>
-            <span class="badge warning">5 новых</span>
-          </div>
-          <div class="notification-list" id="notificationList"></div>
-        </article>
-      </section>
 
-      <section class="messenger card panel" id="messenger">
-        <div class="panel-header">
-          <div>
-            <p class="section-label">Integrated Messenger</p>
-            <h3>Внутренний чат</h3>
-          </div>
-          <div class="messenger-actions">
-            <input type="search" id="chatSearch" placeholder="Поиск чата или сообщения">
-            <span class="badge success" id="presenceStatus">Online</span>
+            <div class="col-12 col-xxl-6">
+              <section class="card border-0 shadow-sm h-100">
+                <div class="card-body p-4">
+                  <p class="section-label mb-1">Сегодня</p>
+                  <h3 class="h4 mb-3">Краткая активность</h3>
+                  <div class="assignment-list">
+                    <article class="assignment-card">
+                      <div class="assignment-card-header">
+                        <strong>09:00</strong>
+                        <span class="course-tag">Schedule</span>
+                      </div>
+                      <p>Пара по архитектуре LMS.</p>
+                    </article>
+                    <article class="assignment-card">
+                      <div class="assignment-card-header">
+                        <strong>14:00</strong>
+                        <span class="course-tag">Messenger</span>
+                      </div>
+                      <p>Обсуждение макета и требований в чате курса.</p>
+                    </article>
+                    <article class="assignment-card">
+                      <div class="assignment-card-header">
+                        <strong>18:00</strong>
+                        <span class="course-tag">Assignment</span>
+                      </div>
+                      <p>Дедлайн по use case диаграмме.</p>
+                    </article>
+                  </div>
+                </div>
+              </section>
+            </div>
           </div>
         </div>
-
-        <div class="messenger-layout">
-          <aside class="chat-list" id="chatList"></aside>
-
-          <div class="chat-window">
-            <div class="chat-window-header">
-              <div>
-                <h4 id="activeChatTitle">Выберите чат</h4>
-                <p id="activeChatSubtitle">Личные, групповые и административные каналы</p>
-              </div>
-              <span class="typing-indicator" id="typingIndicator">Пользователь печатает...</span>
-            </div>
-
-            <div class="message-history" id="messageHistory"></div>
-
-            <form id="messageForm" class="message-form">
-              <input type="text" id="messageInput" placeholder="Введите сообщение">
-              <button type="button" class="ghost-button" id="fileButton">Файл</button>
-              <button type="submit" class="primary-button">Отправить</button>
-            </form>
-          </div>
-        </div>
-      </section>
-
-      <section class="grid two-up">
-        <article class="card panel" id="profile">
-          <div class="panel-header">
-            <div>
-              <p class="section-label">Profile</p>
-              <h3>Профиль пользователя</h3>
-            </div>
-            <span class="badge accent">Рейтинг 4.8</span>
-          </div>
-          <div class="profile-card">
-            <div class="avatar">NG</div>
-            <div>
-              <h4 id="profileName">Назир Г.</h4>
-              <p id="profileRole">Student</p>
-              <p id="profileBio">Осваивает веб-разработку, UI/UX и современные инструменты онлайн-обучения.</p>
-            </div>
-          </div>
-          <div class="progress-blocks">
-            <div>
-              <span>6</span>
-              <p>Активных курсов</p>
-            </div>
-            <div>
-              <span>89%</span>
-              <p>Средний балл</p>
-            </div>
-            <div>
-              <span>12</span>
-              <p>Выполнено заданий</p>
-            </div>
-          </div>
-        </article>
-
-        <article class="card panel" id="admin">
-          <div class="panel-header">
-            <div>
-              <p class="section-label">Admin Panel</p>
-              <h3>Статистика и модерация</h3>
-            </div>
-            <span class="badge danger">2 жалобы</span>
-          </div>
-          <div class="admin-grid">
-            <div class="admin-box">
-              <span>1280</span>
-              <p>Пользователей</p>
-            </div>
-            <div class="admin-box">
-              <span>96</span>
-              <p>Курсов</p>
-            </div>
-            <div class="admin-box">
-              <span>32</span>
-              <p>Преподавателя</p>
-            </div>
-            <div class="admin-box">
-              <span>18</span>
-              <p>Открытых тикетов</p>
-            </div>
-          </div>
-          <div class="moderation-list">
-            <div class="moderation-item">
-              <strong>Пользователь #204</strong>
-              <p>Подозрение на спам в групповом чате курса UX Design.</p>
-            </div>
-            <div class="moderation-item">
-              <strong>Курс "SMM Sprint"</strong>
-              <p>Требуется проверка обложки и описания перед публикацией.</p>
-            </div>
-          </div>
-        </article>
-      </section>
-    </main>
+      </main>
+    </div>
   </div>
 
-  <script src="app.js"></script>
+  <script src="/site.js"></script>
 </body>
 </html>

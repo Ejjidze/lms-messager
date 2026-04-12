@@ -10,10 +10,16 @@ class Assignment(BaseModel):
     title: str
     description: str
     deadline: datetime
+    max_score: int = 100
     type: Literal["test", "file", "text"]
     status: str
     grade: int | None
     teacher_comment: str | None
+    material_file_name: str | None = None
+    material_file_url: str | None = None
+    material_file_mime_type: str | None = None
+    teacher_name: str | None = None
+    can_delete: bool = False
     submissions_count: int = 0
     current_user_grade: int | None = None
     current_user_feedback: str | None = None
@@ -25,6 +31,7 @@ class Submission(BaseModel):
     id: int
     assignment_id: int
     student_id: int
+    student_name: str | None = None
     submitted_text: str | None
     submitted_file_name: str | None
     submitted_file_url: str | None
@@ -52,4 +59,16 @@ class SubmissionResponse(BaseModel):
     submitted_file_url: str | None = None
     submitted_file_mime_type: str | None = None
     status: str
+    message: str
+
+
+class AssignmentCreateResponse(BaseModel):
+    assignment_id: int
+    course_id: int
+    title: str
+    deadline: datetime
+    max_score: int
+    material_file_name: str
+    material_file_url: str
+    material_file_mime_type: str
     message: str

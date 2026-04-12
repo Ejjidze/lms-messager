@@ -5,11 +5,9 @@ from sqlalchemy.orm import Session
 
 from app.core.security import hash_password
 from app.models import (
-    Assignment,
     Chat,
     Course,
     Enrollment,
-    Grade,
     Lesson,
     Message,
     Module,
@@ -19,7 +17,6 @@ from app.models import (
     QuizAttempt,
     QuizOption,
     QuizQuestion,
-    Submission,
     User,
 )
 
@@ -32,7 +29,7 @@ def seed_database(db: Session) -> None:
     student = User(
         email="student@eduflow.local",
         password_hash=hash_password("student123"),
-        full_name="Назир Г.",
+        full_name="Наиль Г.",
         role="student",
         bio="Осваивает веб-разработку, UI/UX и современные инструменты онлайн-обучения.",
         avatar="NG",
@@ -41,7 +38,7 @@ def seed_database(db: Session) -> None:
     teacher = User(
         email="teacher@eduflow.local",
         password_hash=hash_password("teacher123"),
-        full_name="Алина Каримова",
+        full_name="Иван Иванович Иванов",
         role="teacher",
         bio="Создаёт учебные программы, проверяет задания и сопровождает студентов по курсу.",
         avatar="AK",
@@ -129,6 +126,7 @@ def seed_database(db: Session) -> None:
         lesson_id=1,
         title="Проверка знаний по LMS",
         description="Базовый тест по ролям, курсам и встроенному мессенджеру.",
+        deadline=datetime.fromisoformat("2026-04-05T23:59:00"),
         passing_score=60,
     )
     db.add(quiz)
@@ -164,52 +162,6 @@ def seed_database(db: Session) -> None:
         ]
     )
     db.flush()
-
-    first_assignment = Assignment(
-        course_id=fullstack.id,
-        title="Спроектировать карточку курса",
-        description="Создать карточку курса с названием, описанием, категорией и CTA-кнопкой.",
-        deadline=datetime.fromisoformat("2026-04-02T18:00:00"),
-        type="file",
-        status="pending",
-    )
-    second_assignment = Assignment(
-        course_id=fullstack.id,
-        title="Написать use case для LMS",
-        description="Описать сценарии использования для студента, преподавателя и администратора.",
-        deadline=datetime.fromisoformat("2026-04-04T20:00:00"),
-        type="text",
-        status="review",
-        grade=92,
-        teacher_comment="Хорошая структура, добавьте кейс модерации.",
-    )
-    db.add_all([first_assignment, second_assignment])
-    db.flush()
-
-    first_submission = Submission(
-        assignment_id=first_assignment.id,
-        student_id=student.id,
-        submitted_text="Подготовил структуру карточки курса и пользовательский сценарий.",
-        submitted_file_name=None,
-        submitted_file_url=None,
-        submitted_file_mime_type=None,
-        status="review",
-        created_at=datetime.fromisoformat("2026-03-28T15:10:00"),
-    )
-    db.add(first_submission)
-    db.flush()
-
-    db.add(
-        Grade(
-            submission_id=first_submission.id,
-            student_id=student.id,
-            teacher_id=teacher.id,
-            score=88,
-            max_score=100,
-            feedback="Хорошая работа, но стоит точнее описать CTA и состояния карточки.",
-            graded_at=datetime.fromisoformat("2026-03-29T11:00:00"),
-        )
-    )
 
     db.add_all(
         [
@@ -287,7 +239,7 @@ def seed_database(db: Session) -> None:
         course_id=fullstack.id,
     )
     direct_chat = Chat(
-        title="Алина Каримова",
+        title="Иван Иванович Иванов",
         chat_type="direct",
         participant_ids=[student.id, teacher.id],
         course_id=None,
@@ -318,7 +270,7 @@ def seed_database(db: Session) -> None:
             Message(
                 chat_id=group_chat.id,
                 sender_id=student.id,
-                sender_name="Назир",
+                sender_name="Наиль",
                 content="Принято, добавлю экран мессенджера и панель курсов.",
                 message_type="text",
                 attachment_name=None,

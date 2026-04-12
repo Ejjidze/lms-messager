@@ -4,11 +4,11 @@
 
 ```bash
 cd backend
-mysql -u root -p < init_db.sql
 python3 -m venv .venv
 source .venv/bin/activate
 pip install -r requirements.txt
 cp .env.example .env
+# по умолчанию используется SQLite: sqlite:///./eduflow.db
 # при необходимости измени DATABASE_URL, API_HOST, API_PORT
 alembic upgrade head
 uvicorn app.main:app --reload --host 127.0.0.1 --port 8000
@@ -16,13 +16,14 @@ uvicorn app.main:app --reload --host 127.0.0.1 --port 8000
 
 После запуска API будет доступно по адресу:
 
+- `http://127.0.0.1:8000/`
 - `http://127.0.0.1:8000/api/health`
 - `http://127.0.0.1:8000/docs`
 
 ## Что уже есть
 
 - настройки вынесены в `.env`
-- подключение к MySQL через `SQLAlchemy`
+- подключение к SQLite через `SQLAlchemy` по умолчанию
 - Alembic-миграции для актуализации схемы БД
 - первичное заполнение demo-данными через `seed_database`
 - JWT-аутентификация через `Bearer`-токен
@@ -36,6 +37,7 @@ uvicorn app.main:app --reload --host 127.0.0.1 --port 8000
 - API для ручного создания тестов преподавателем и редактора вопросов
 - materialized summaries и refresh-endpoints для ускорения analytics
 - cron-friendly job для фонового автообновления analytics summaries
+- frontend теперь раздаётся через FastAPI с главной страницы `/`
 - `POST /api/auth/login` - получение access token
 - `GET /api/users` - список пользователей
 - `GET /api/users/me` - текущий пользователь
@@ -119,6 +121,12 @@ crontab -e
 И добавить строку по примеру из файла, чтобы summaries обновлялись каждые 15 минут. Расписание по умолчанию также отражено в `.env` через `ANALYTICS_REFRESH_CRON`.
 
 ## Alembic
+
+По умолчанию backend использует локальный файл базы:
+
+- `backend/eduflow.db`
+
+Если нужна другая БД, достаточно поменять `DATABASE_URL` в `.env`.
 
 Для новой базы:
 

@@ -22,10 +22,8 @@ class Settings:
         media_root = Path(os.getenv("MEDIA_ROOT", str(BASE_DIR / "media")))
         self.media_root = str(media_root if media_root.is_absolute() else (BASE_DIR / media_root).resolve())
         self.media_url = os.getenv("MEDIA_URL", "/media")
-        self.database_url = os.getenv(
-            "DATABASE_URL",
-            "mysql+pymysql://root:password@localhost:3306/eduflow_lms?charset=utf8mb4",
-        )
+        default_database_url = f"sqlite:///{(BASE_DIR / 'eduflow.db').resolve()}"
+        self.database_url = os.getenv("DATABASE_URL", default_database_url)
 
 
 settings = Settings()

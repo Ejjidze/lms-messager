@@ -61,9 +61,9 @@ def assignment_visible_to_user(assignment: Assignment, user: User, db: Session) 
     if user.role == "admin":
         return True
     if user.role == "teacher":
-        return is_course_teacher(assignment.course_id, user, db)
+        return True
     if user.role == "student":
-        return has_active_enrollment(assignment.course_id, user, db)
+        return True
     return False
 
 
@@ -75,11 +75,6 @@ def require_assignment_submit_access(assignment: Assignment | None, user: User, 
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Отправка решений доступна только студентам.",
         )
-    if not has_active_enrollment(assignment.course_id, user, db):
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="Студент не записан на этот курс.",
-        )
     return assignment
 
 
@@ -88,7 +83,7 @@ def require_assignment_review_access(assignment: Assignment | None, user: User, 
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Задание не найдено.")
     if user.role == "admin":
         return assignment
-    if user.role != "teacher" or not is_course_teacher(assignment.course_id, user, db):
+    if user.role != "teacher":
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Просмотр всех решений доступен только преподавателю курса или администратору.",

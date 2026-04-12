@@ -2,6 +2,7 @@ const state = {
   activeRole: "student",
   activeLesson: null,
   activeChatId: 1,
+  notificationsOpen: false,
   nextQuestionId: 3,
   nextOptionId: 7,
   courses: [
@@ -11,7 +12,7 @@ const state = {
       description: "HTML, CSS, JavaScript, FastAPI и проектирование полноценных веб-приложений.",
       category: "Programming",
       level: "Intermediate",
-      teacher: "Алина Каримова",
+      teacher: "Иван Иванович Иванов",
       students: 120,
       progress: 72
     },
@@ -21,7 +22,7 @@ const state = {
       description: "Исследования пользователей, wireframes, интерфейсы и прототипирование.",
       category: "Design",
       level: "Beginner",
-      teacher: "Ирина Соколова",
+      teacher: "Иван Иванович Иванов",
       students: 80,
       progress: 54
     },
@@ -31,7 +32,7 @@ const state = {
       description: "Контент-стратегия, аналитика, SEO и запуск рекламных кампаний.",
       category: "Marketing",
       level: "Advanced",
-      teacher: "Евгений Литвинов",
+      teacher: "Иван Иванович Иванов",
       students: 64,
       progress: 31
     }
@@ -114,7 +115,7 @@ const state = {
     },
     {
       id: 2,
-      title: "Алина Каримова",
+      title: "Иван Иванович Иванов",
       subtitle: "Личный чат преподаватель ↔ студент",
       online: true,
       messages: [
@@ -164,13 +165,13 @@ const state = {
   roleConfig: {
     student: {
       action: "Записаться",
-      profileName: "Назир Г.",
+      profileName: "Наиль Г.",
       profileRole: "Student",
       profileBio: "Осваивает веб-разработку, UI/UX и современные инструменты онлайн-обучения."
     },
     teacher: {
       action: "Создать курс",
-      profileName: "Алина Каримова",
+      profileName: "Иван Иванович Иванов",
       profileRole: "Teacher",
       profileBio: "Создаёт учебные программы, проверяет задания и сопровождает студентов по курсу."
     },
@@ -187,6 +188,10 @@ const courseList = document.getElementById("courseList");
 const moduleList = document.getElementById("moduleList");
 const assignmentList = document.getElementById("assignmentList");
 const notificationList = document.getElementById("notificationList");
+const notificationBell = document.getElementById("notificationBell");
+const notificationDropdown = document.getElementById("notificationDropdown");
+const notificationCounter = document.getElementById("notificationCounter");
+const notificationBadge = document.getElementById("notificationBadge");
 const chatList = document.getElementById("chatList");
 const messageHistory = document.getElementById("messageHistory");
 const lessonTitle = document.getElementById("lessonTitle");
@@ -217,9 +222,16 @@ const builderPreviewMeta = document.getElementById("builderPreviewMeta");
 const editingQuestionId = document.getElementById("editingQuestionId");
 
 function renderCourses() {
-  const search = document.getElementById("courseSearch").value.toLowerCase();
-  const category = document.getElementById("categoryFilter").value;
-  const level = document.getElementById("levelFilter").value;
+  const courseSearch = document.getElementById("courseSearch");
+  const categoryFilter = document.getElementById("categoryFilter");
+  const levelFilter = document.getElementById("levelFilter");
+  if (!courseList || !courseSearch || !categoryFilter || !levelFilter) {
+    return;
+  }
+
+  const search = courseSearch.value.toLowerCase();
+  const category = categoryFilter.value;
+  const level = levelFilter.value;
 
   const filteredCourses = state.courses.filter((course) => {
     const matchesSearch =
@@ -256,6 +268,10 @@ function renderCourses() {
 }
 
 function renderModules() {
+  if (!moduleList || !lessonTitle || !lessonDescription || !lessonMeta) {
+    return;
+  }
+
   moduleList.innerHTML = state.modules
     .map(
       (module) => `
@@ -310,6 +326,11 @@ function renderAssignments() {
 }
 
 function renderNotifications() {
+  const unreadCount = state.notifications.length;
+  notificationCounter.textContent = unreadCount;
+  notificationBadge.textContent = `${unreadCount} новых`;
+  notificationBell.setAttribute("aria-expanded", String(state.notificationsOpen));
+  notificationDropdown.hidden = !state.notificationsOpen;
   notificationList.innerHTML = state.notifications
     .map(
       (item) => `
@@ -323,6 +344,11 @@ function renderNotifications() {
       `
     )
     .join("");
+}
+
+function setNotificationsOpen(isOpen) {
+  state.notificationsOpen = isOpen;
+  renderNotifications();
 }
 
 function renderChats() {
@@ -394,7 +420,9 @@ function updateRole(role) {
   });
 
   const config = state.roleConfig[role];
-  roleActionButton.textContent = config.action;
+  if (roleActionButton) {
+    roleActionButton.textContent = config.action;
+  }
   profileName.textContent = config.profileName;
   profileRole.textContent = config.profileRole;
   profileBio.textContent = config.profileBio;
@@ -484,6 +512,10 @@ function resetQuestionForm() {
 }
 
 function renderQuizBuilder() {
+  if (!quizBuilder || !builderRoleBadge || !builderLessonSelect || !builderQuizTitle || !builderQuizDescription || !builderPassingScore || !builderPreviewTitle || !builderPreviewMeta || !builderQuestionList) {
+    return;
+  }
+
   const builderEnabled = state.activeRole === "teacher" || state.activeRole === "admin";
   quizBuilder.classList.toggle("is-hidden", !builderEnabled);
   builderRoleBadge.textContent = builderEnabled ? "Editor Enabled" : "Teacher Only";
@@ -575,10 +607,14 @@ document.querySelectorAll(".nav-link").forEach((link) => {
   });
 });
 
-document.getElementById("courseSearch").addEventListener("input", renderCourses);
-document.getElementById("categoryFilter").addEventListener("change", renderCourses);
-document.getElementById("levelFilter").addEventListener("change", renderCourses);
+document.getElementById("courseSearch")?.addEventListener("input", renderCourses);
+document.getElementById("categoryFilter")?.addEventListener("change", renderCourses);
+document.getElementById("levelFilter")?.addEventListener("change", renderCourses);
 document.getElementById("chatSearch").addEventListener("input", renderChats);
+notificationBell.addEventListener("click", (event) => {
+  event.stopPropagation();
+  setNotificationsOpen(!state.notificationsOpen);
+});
 document.getElementById("addOptionButton").addEventListener("click", () => {
   state.currentDraftOptions.push(getEmptyOption());
   renderOptionBuilder([...state.currentDraftOptions]);
@@ -720,6 +756,18 @@ document.getElementById("fileButton").addEventListener("click", () => {
   });
   renderChats();
   renderMessages();
+});
+
+document.addEventListener("click", (event) => {
+  if (!notificationDropdown.contains(event.target) && !notificationBell.contains(event.target)) {
+    setNotificationsOpen(false);
+  }
+});
+
+document.addEventListener("keydown", (event) => {
+  if (event.key === "Escape") {
+    setNotificationsOpen(false);
+  }
 });
 
 renderCourses();

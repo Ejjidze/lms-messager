@@ -1,6 +1,6 @@
 from datetime import datetime
 
-from fastapi import APIRouter, Depends, File, Form, Query, UploadFile
+from fastapi import APIRouter, Depends, File, Form, HTTPException, Query, UploadFile
 from sqlalchemy import or_, select
 from sqlalchemy.orm import Session, selectinload
 
@@ -53,6 +53,49 @@ def get_chat(
         course_id=chat.course_id,
         messages=chat_messages,
     )
+
+
+@router.post("/direct/{peer_user_id}", response_model=Chat)
+def get_or_create_direct_chat(
+    peer_user_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+) -> Chat:
+    if peer_user_id == current_user.id:
+        raise HTTPException(status_code=400, detail="Нельзя создать личный чат с самим собой.")
+
+    peer_user = db.scalar(select(User).where(User.id == peer_user_id))
+    if not peer_user:
+        raise HTTPException(status_code=404, detail="Пользователь не найден.")
+
+    current_role = current_user.role
+    peer_role = peer_user.role
+    allowed_pair = {current_role, peer_role} == {"student", "teacher"}
+    if current_user.role != "admin" and not allowed_pair:
+        raise HTTPException(
+            status_code=403,
+            detail="Личные чаты доступны только между преподавателем и студентом.",
+        )
+
+    direct_chats = db.scalars(select(ChatModel).where(ChatModel.chat_type == "direct")).all()
+    target_participants = {current_user.id, peer_user.id}
+    existing_chat = next(
+        (chat for chat in direct_chats if set(chat.participant_ids or []) == target_participants),
+        None,
+    )
+    if existing_chat:
+        return Chat.model_validate(existing_chat)
+
+    new_chat = ChatModel(
+        title=f"{current_user.full_name} ↔ {peer_user.full_name}",
+        chat_type="direct",
+        participant_ids=sorted([current_user.id, peer_user.id]),
+        course_id=None,
+    )
+    db.add(new_chat)
+    db.commit()
+    db.refresh(new_chat)
+    return Chat.model_validate(new_chat)
 
 
 @router.post("/{chat_id}/messages", response_model=ChatMessage)

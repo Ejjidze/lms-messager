@@ -160,6 +160,7 @@ def create_quiz(
         lesson_id=payload.lesson_id,
         title=payload.title,
         description=payload.description,
+        deadline=payload.deadline,
         passing_score=payload.passing_score,
     )
     db.add(quiz)
@@ -197,6 +198,7 @@ def update_quiz(
     quiz.title = payload.title
     quiz.description = payload.description
     quiz.lesson_id = payload.lesson_id
+    quiz.deadline = payload.deadline
     quiz.passing_score = payload.passing_score
     db.commit()
     db.refresh(quiz)

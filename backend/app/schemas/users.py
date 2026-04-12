@@ -1,11 +1,11 @@
 from typing import Literal
 
-from pydantic import BaseModel, EmailStr
+from pydantic import BaseModel
 
 
 class UserPublic(BaseModel):
     id: int
-    email: EmailStr
+    email: str
     full_name: str
     role: Literal["student", "teacher", "admin"]
     bio: str

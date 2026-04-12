@@ -34,6 +34,7 @@ class QuizResponse(BaseModel):
     lesson_id: int | None
     title: str
     description: str
+    deadline: datetime | None = None
     passing_score: int
     questions: list[QuizQuestionResponse]
 
@@ -79,6 +80,7 @@ class QuizCreate(BaseModel):
     title: str
     description: str = ""
     lesson_id: int | None = None
+    deadline: datetime | None = None
     passing_score: int = 60
     questions: list[QuizQuestionCreate] = []
 
@@ -87,4 +89,5 @@ class QuizUpdate(BaseModel):
     title: str
     description: str = ""
     lesson_id: int | None = None
+    deadline: datetime | None = None
     passing_score: int = 60
