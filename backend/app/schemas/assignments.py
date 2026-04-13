@@ -7,6 +7,7 @@ from pydantic import BaseModel
 class Assignment(BaseModel):
     id: int
     course_id: int
+    course_title: str | None = None
     title: str
     description: str
     deadline: datetime
@@ -21,6 +22,7 @@ class Assignment(BaseModel):
     teacher_name: str | None = None
     can_delete: bool = False
     submissions_count: int = 0
+    has_ungraded_submissions: bool = False
     current_user_grade: int | None = None
     current_user_feedback: str | None = None
 

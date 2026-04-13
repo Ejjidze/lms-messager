@@ -42,6 +42,8 @@
                 <a href="/directory" class="nav-link">Пользователи</a>
                 <a href="/messenger" class="nav-link">Мессенджер</a>
                 <a href="/admin" class="nav-link active" data-admin-only="true">Админ-панель</a>
+                <a href="/admin/moderation" class="nav-link" data-admin-only="true">Модерация</a>
+                <a href="/admin/settings" class="nav-link" data-admin-only="true">Настройки</a>
               </nav>
             </div>
           </section>
@@ -54,37 +56,229 @@
             <div class="panel-header">
               <div>
                 <p class="section-label mb-1">Admin Panel</p>
-                <h1 class="h3 mb-0 hero-title">Статистика и модерация</h1>
+                <h1 class="h3 mb-0 hero-title">Центр управления LMS</h1>
               </div>
-              <span class="badge text-bg-danger rounded-pill">2 жалобы</span>
+              <span class="badge text-bg-primary rounded-pill">Пользователи</span>
             </div>
-            <div class="admin-grid mt-4">
-              <div class="admin-box">
-                <span>1280</span>
-                <p>Пользователей</p>
+            <div class="admin-grid mt-4" id="adminStatsGrid">
+              <div class="admin-box"><span id="statTotalUsers">0</span><p>Пользователей</p></div>
+              <div class="admin-box"><span id="statActiveUsers">0</span><p>Активных</p></div>
+            </div>
+
+            <section class="mt-4">
+              <div class="d-flex align-items-center justify-content-between gap-2 mb-3">
+                <h2 class="h5 mb-0">Пользователи</h2>
+                <input
+                  type="search"
+                  class="form-control form-control-sm"
+                  id="adminUserSearch"
+                  placeholder="Поиск: ФИО, логин, группа, предмет"
+                  style="max-width: 340px;"
+                >
               </div>
-              <div class="admin-box">
-                <span>96</span>
-                <p>Курсов</p>
+              <div class="row g-4" id="adminUsersSection">
+                <div class="col-12">
+                  <h3 class="h6 mb-2">Преподаватели</h3>
+                  <div class="table-responsive">
+                    <table class="table table-striped align-middle" id="adminTeachersTable">
+                      <thead>
+                        <tr>
+                          <th>ID</th>
+                          <th>ФИО</th>
+                          <th>Предмет</th>
+                          <th>Действия</th>
+                        </tr>
+                      </thead>
+                      <tbody></tbody>
+                    </table>
+                  </div>
+                </div>
+                <div class="col-12">
+                  <h3 class="h6 mb-2">Студенты</h3>
+                  <div class="table-responsive">
+                    <table class="table table-striped align-middle" id="adminStudentsTable">
+                      <thead>
+                        <tr>
+                          <th>ID</th>
+                          <th>ФИО</th>
+                          <th>Группа</th>
+                          <th>Действия</th>
+                        </tr>
+                      </thead>
+                      <tbody></tbody>
+                    </table>
+                  </div>
+                </div>
               </div>
-              <div class="admin-box">
-                <span>32</span>
-                <p>Преподавателя</p>
+            </section>
+
+            <section class="mt-4">
+              <h2 class="h5 mb-3">Добавить пользователя</h2>
+              <form class="row g-3" id="adminCreateUserForm">
+                <div class="col-12 col-lg-6">
+                  <label class="form-label">ФИО</label>
+                  <input class="form-control" id="newUserFullName" type="text" required>
+                </div>
+                <div class="col-12 col-lg-3">
+                  <label class="form-label">Логин</label>
+                  <input class="form-control" id="newUserLogin" type="text" required>
+                </div>
+                <div class="col-12 col-lg-3">
+                  <label class="form-label">Пароль</label>
+                  <input class="form-control" id="newUserPassword" type="text" minlength="8" required>
+                </div>
+                <div class="col-12 col-lg-3">
+                  <label class="form-label">Роль</label>
+                  <select class="form-select" id="newUserRole">
+                    <option value="student">student</option>
+                    <option value="teacher">teacher</option>
+                    <option value="admin">admin</option>
+                  </select>
+                </div>
+
+                <div id="newStudentFields" class="row g-3">
+                  <div class="col-12 col-lg-6">
+                    <label class="form-label">Куратор</label>
+                    <input class="form-control" id="newStudentCurator" type="text">
+                  </div>
+                  <div class="col-12 col-lg-6">
+                    <label class="form-label">Направление</label>
+                    <input class="form-control" id="newStudentDirection" type="text">
+                  </div>
+                  <div class="col-12 col-lg-4">
+                    <label class="form-label">Степень</label>
+                    <select class="form-select" id="newStudentDegree">
+                      <option value="Бакалавр">Бакалавр</option>
+                      <option value="Магистр">Магистр</option>
+                    </select>
+                  </div>
+                  <div class="col-12 col-lg-2">
+                    <label class="form-label">Курс</label>
+                    <select class="form-select" id="newStudentYear">
+                      <option value="1">1</option>
+                      <option value="2">2</option>
+                      <option value="3">3</option>
+                      <option value="4">4</option>
+                    </select>
+                  </div>
+                  <div class="col-12 col-lg-3">
+                    <label class="form-label">Язык обучения</label>
+                    <select class="form-select" id="newStudentLanguage">
+                      <option value="ru">ru</option>
+                      <option value="uz">uz</option>
+                      <option value="en">en</option>
+                    </select>
+                  </div>
+                  <div class="col-12 col-lg-3">
+                    <label class="form-label">Тип обучения</label>
+                    <select class="form-select" id="newStudentStudyType">
+                      <option value="Очная">Очная</option>
+                      <option value="Заочная">Заочная</option>
+                      <option value="Онлайн">Онлайн</option>
+                    </select>
+                  </div>
+                  <div class="col-12 col-lg-4">
+                    <label class="form-label">Группа</label>
+                    <input class="form-control" id="newStudentGroup" type="text">
+                  </div>
+                  <div class="col-12 col-lg-4 d-flex align-items-end">
+                    <div class="form-check">
+                      <input class="form-check-input" type="checkbox" id="newStudentScholarship">
+                      <label class="form-check-label" for="newStudentScholarship">Стипендия</label>
+                    </div>
+                  </div>
+                </div>
+
+                <div class="col-12">
+                  <button class="btn btn-primary" type="submit">Добавить пользователя</button>
+                </div>
+              </form>
+            </section>
+
+            <section class="mt-4">
+              <div class="d-flex align-items-center justify-content-between gap-2 mb-3">
+                <h2 class="h5 mb-0">Журнал безопасности</h2>
+                <button class="btn btn-outline-secondary btn-sm" type="button" id="adminSecurityToggle" aria-expanded="false">
+                  Развернуть
+                </button>
               </div>
-              <div class="admin-box">
-                <span>18</span>
-                <p>Открытых тикетов</p>
+              <div class="moderation-list" id="adminSecurityList" hidden></div>
+            </section>
+
+            <div class="assignment-empty-state mt-3" id="adminStatusBox" hidden></div>
+
+            <div id="adminEditUserModal" class="subject-activities-modal" hidden>
+              <div class="subject-activities-backdrop" data-close-admin-edit-modal></div>
+              <div class="subject-activities-dialog">
+                <div class="subject-activities-header">
+                  <h2 class="h5 mb-0">Редактировать пользователя</h2>
+                  <button type="button" class="btn btn-sm btn-outline-secondary" data-close-admin-edit-modal>Закрыть</button>
+                </div>
+                <div class="subject-activities-content">
+                  <form class="row g-3" id="adminEditUserForm">
+                    <input type="hidden" id="editUserId">
+                    <div class="col-12 col-lg-6">
+                      <label class="form-label">ФИО</label>
+                      <input class="form-control" id="editUserFullName" type="text" required>
+                    </div>
+                    <div class="col-12 col-lg-6">
+                      <label class="form-label">Логин</label>
+                      <input class="form-control" id="editUserLogin" type="text" required>
+                    </div>
+                    <div class="col-12 col-lg-6">
+                      <label class="form-label">Новый пароль (необязательно)</label>
+                      <input class="form-control" id="editUserPassword" type="text" minlength="8">
+                    </div>
+
+                    <div id="editStudentFields" class="row g-3">
+                      <div class="col-12 col-lg-6">
+                        <label class="form-label">Куратор</label>
+                        <input class="form-control" id="editStudentCurator" type="text">
+                      </div>
+                      <div class="col-12 col-lg-6">
+                        <label class="form-label">Направление</label>
+                        <input class="form-control" id="editStudentDirection" type="text">
+                      </div>
+                      <div class="col-12 col-lg-4">
+                        <label class="form-label">Степень</label>
+                        <input class="form-control" id="editStudentDegree" type="text">
+                      </div>
+                      <div class="col-12 col-lg-2">
+                        <label class="form-label">Курс</label>
+                        <input class="form-control" id="editStudentYear" type="number" min="1" max="8">
+                      </div>
+                      <div class="col-12 col-lg-3">
+                        <label class="form-label">Язык обучения</label>
+                        <select class="form-select" id="editStudentLanguage">
+                          <option value="ru">ru</option>
+                          <option value="uz">uz</option>
+                          <option value="en">en</option>
+                        </select>
+                      </div>
+                      <div class="col-12 col-lg-3">
+                        <label class="form-label">Тип обучения</label>
+                        <input class="form-control" id="editStudentStudyType" type="text">
+                      </div>
+                      <div class="col-12 col-lg-4">
+                        <label class="form-label">Группа</label>
+                        <input class="form-control" id="editStudentGroup" type="text">
+                      </div>
+                      <div class="col-12 col-lg-4 d-flex align-items-end">
+                        <div class="form-check">
+                          <input class="form-check-input" type="checkbox" id="editStudentScholarship">
+                          <label class="form-check-label" for="editStudentScholarship">Стипендия</label>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div class="col-12 d-flex gap-2">
+                      <button class="btn btn-primary" type="submit">Сохранить</button>
+                      <button class="btn btn-outline-secondary" type="button" data-close-admin-edit-modal>Отмена</button>
+                    </div>
+                  </form>
+                </div>
               </div>
             </div>
-            <div class="moderation-list">
-              <div class="moderation-item">
-                <strong>Пользователь #204</strong>
-                <p>Подозрение на спам в групповом чате курса UX Design.</p>
-              </div>
-              <div class="moderation-item">
-                <strong>Курс "SMM Sprint"</strong>
-                <p>Требуется проверка обложки и описания перед публикацией.</p>
-              </div>
             </div>
           </div>
         </section>

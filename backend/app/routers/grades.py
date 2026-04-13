@@ -4,7 +4,6 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from app.authorization import is_course_teacher
 from app.database import get_db
 from app.dependencies import get_current_user
 from app.models import Grade, Submission, User
@@ -24,15 +23,13 @@ def grade_submission(
     if not submission:
         raise HTTPException(status_code=404, detail="Submission не найден.")
 
-    if current_user.role != "admin":
-        if current_user.role != "teacher":
-            raise HTTPException(status_code=403, detail="Оценивать может только преподаватель или администратор.")
-        is_assignment_author = submission.assignment.created_by_teacher_id == current_user.id
-        if not is_assignment_author and not is_course_teacher(submission.assignment.course_id, current_user, db):
-            raise HTTPException(
-                status_code=403,
-                detail="Оценивать может автор задания, преподаватель курса или администратор.",
-            )
+    if current_user.role != "teacher":
+        raise HTTPException(status_code=403, detail="Оценивать может только преподаватель.")
+    if submission.assignment.created_by_teacher_id != current_user.id:
+        raise HTTPException(
+            status_code=403,
+            detail="Оценивать можно только свои задания.",
+        )
     if payload.score < 0:
         raise HTTPException(status_code=400, detail="Оценка не может быть отрицательной.")
     assignment_max_score = submission.assignment.max_score or 100
@@ -80,8 +77,7 @@ def get_submission_grade(
     if current_user.role == "student" and grade.student_id != current_user.id:
         raise HTTPException(status_code=403, detail="Нет доступа к этой оценке.")
     if current_user.role == "teacher":
-        is_assignment_author = grade.submission.assignment.created_by_teacher_id == current_user.id
-        if not is_assignment_author and not is_course_teacher(grade.submission.assignment.course_id, current_user, db):
+        if grade.submission.assignment.created_by_teacher_id != current_user.id:
             raise HTTPException(status_code=403, detail="Нет доступа к этой оценке.")
 
     return GradeResponse.model_validate(grade)

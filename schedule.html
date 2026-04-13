@@ -47,6 +47,8 @@
                 <a href="/directory" class="nav-link">Пользователи</a>
                 <a href="/messenger" class="nav-link">Мессенджер</a>
                 <a href="/admin" class="nav-link" data-admin-only="true">Админ-панель</a>
+                <a href="/admin/moderation" class="nav-link" data-admin-only="true">Модерация</a>
+                <a href="/admin/settings" class="nav-link" data-admin-only="true">Настройки</a>
               </nav>
             </div>
           </section>
@@ -54,75 +56,13 @@
       </aside>
 
       <main class="col-12 col-xl-9">
-        <div class="schedule-page schedule-page-poster">
-          <div class="schedule-poster">
-            <a href="/profile" class="schedule-back schedule-back-poster"><i class="bi bi-arrow-left-short"></i> Назад</a>
-
-            <h1 class="schedule-table-title">Расписание на неделю</h1>
-
-            <table class="table table-striped">
-              <thead>
-                <tr>
-                  <th>Время</th>
-                  <th>Понедельник</th>
-                  <th>Вторник</th>
-                  <th>Среда</th>
-                  <th>Четверг</th>
-                  <th>Пятница</th>
-                </tr>
-              </thead>
-              <tbody>
-                <tr>
-                  <td>08:30</td>
-                  <td></td>
-                  <td>(A-405) Обеспечение качества ПО (4 кр)-SFQ201</td>
-                  <td>(E-108) Обеспечение качества ПО (4 кр)-SFQ201-2</td>
-                  <td></td>
-                  <td>(D-307) Безопасность жизнедеятельности-OEL202</td>
-                </tr>
-                <tr>
-                  <td>10:00</td>
-                  <td>(D-310) Индивидуальный проект (DI)-INP202</td>
-                  <td>(E-310) Архитектура ПО (T)-SWA201-2</td>
-                  <td>(C-410) Архитектура ПО (T)-SWA201</td>
-                  <td>(C-410) Разработка мобильных приложений (DI)-MAD201</td>
-                  <td>(B-210) Безопасность жизнедеятельности-OEL202-2</td>
-                </tr>
-                <tr>
-                  <td>11:30</td>
-                  <td>(E-312) Архитектура ПО (T)-SWA201</td>
-                  <td></td>
-                  <td>(D-309) Индивидуальный проект (DI)-INP202</td>
-                  <td>(E-310) Разработка мобильных приложений (DI)-MAD201-2</td>
-                  <td></td>
-                </tr>
-                <tr>
-                  <td>12:15</td>
-                  <td>(E-312) Разработка мобильных приложений (DI)-MAD201</td>
-                  <td></td>
-                  <td></td>
-                  <td></td>
-                  <td></td>
-                </tr>
-                <tr>
-                  <td>13:00</td>
-                  <td></td>
-                  <td></td>
-                  <td></td>
-                  <td></td>
-                  <td></td>
-                </tr>
-                <tr>
-                  <td>15:00</td>
-                  <td></td>
-                  <td></td>
-                  <td></td>
-                  <td></td>
-                  <td></td>
-                </tr>
-              </tbody>
-            </table>
-          </div>
+        <div class="d-flex justify-content-end align-items-center gap-2 mb-3" id="scheduleAdminControls" data-admin-only="true" hidden>
+          <button type="button" class="btn btn-outline-secondary btn-sm" id="scheduleEditToggle">Редактировать расписание</button>
+          <button type="button" class="btn btn-primary btn-sm" id="scheduleSaveButton" hidden>Сохранить</button>
+          <button type="button" class="btn btn-outline-secondary btn-sm" id="scheduleCancelButton" hidden>Отмена</button>
+        </div>
+        <div id="scheduleStatusBox" class="mb-3"></div>
+        <div class="schedule-sheet" id="scheduleSheet">
         </div>
       </main>
     </div>

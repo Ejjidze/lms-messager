@@ -58,8 +58,9 @@ def list_assignments(
     assignments = db.scalars(
         select(AssignmentModel)
         .options(
-            selectinload(AssignmentModel.submissions),
+            selectinload(AssignmentModel.submissions).selectinload(SubmissionModel.grade_record),
             selectinload(AssignmentModel.created_by_teacher),
+            selectinload(AssignmentModel.course),
         )
         .order_by(AssignmentModel.id)
     ).all()
@@ -78,6 +79,7 @@ def list_assignments(
             Assignment(
                 id=item.id,
                 course_id=item.course_id,
+                course_title=item.course.title if item.course else None,
                 title=item.title,
                 description=item.description,
                 deadline=item.deadline,
@@ -99,6 +101,7 @@ def list_assignments(
                     and item.created_by_teacher_id == current_user.id
                 ),
                 submissions_count=len(submissions),
+                has_ungraded_submissions=any(submission.grade_record is None for submission in submissions),
                 current_user_grade=latest_grade.score if latest_grade else None,
                 current_user_feedback=latest_grade.feedback if latest_grade else None,
             )

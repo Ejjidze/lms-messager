@@ -19,6 +19,7 @@ router = APIRouter(prefix="/chats", tags=["chats"])
 @router.get("", response_model=list[Chat])
 def list_chats(
     search: str | None = Query(default=None),
+    moderation: bool = Query(default=False),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ) -> list[Chat]:
@@ -27,6 +28,8 @@ def list_chats(
         search_term = f"%{search}%"
         query = query.where(or_(ChatModel.title.ilike(search_term), ChatModel.chat_type.ilike(search_term)))
     result = db.scalars(query).all()
+    if current_user.role == "admin" and not moderation:
+        result = [chat for chat in result if chat.chat_type == "admin"]
     result = filter_chats_for_user(result, current_user, db)
     return [Chat.model_validate(chat) for chat in result]
 
@@ -34,6 +37,7 @@ def list_chats(
 @router.get("/{chat_id}", response_model=ChatWithMessages)
 def get_chat(
     chat_id: int,
+    moderation: bool = Query(default=False),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ) -> ChatWithMessages:
@@ -42,7 +46,13 @@ def get_chat(
         .options(selectinload(ChatModel.messages))
         .where(ChatModel.id == chat_id)
     )
-    chat = require_chat_participant(chat, current_user, db)
+    if current_user.role == "admin":
+        if chat is None:
+            raise HTTPException(status_code=404, detail="Чат не найден.")
+        if chat.chat_type != "admin" and not moderation:
+            raise HTTPException(status_code=403, detail="Доступ к учебным чатам только в режиме модерации.")
+    else:
+        chat = require_chat_participant(chat, current_user, db)
 
     chat_messages = [ChatMessage.model_validate(message) for message in sorted(chat.messages, key=lambda item: item.id)]
     return ChatWithMessages(
@@ -61,6 +71,8 @@ def get_or_create_direct_chat(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ) -> Chat:
+    if current_user.role == "admin":
+        raise HTTPException(status_code=403, detail="Для администратора личные чаты недоступны.")
     if peer_user_id == current_user.id:
         raise HTTPException(status_code=400, detail="Нельзя создать личный чат с самим собой.")
 
@@ -71,7 +83,7 @@ def get_or_create_direct_chat(
     current_role = current_user.role
     peer_role = peer_user.role
     allowed_pair = {current_role, peer_role} == {"student", "teacher"}
-    if current_user.role != "admin" and not allowed_pair:
+    if not allowed_pair:
         raise HTTPException(
             status_code=403,
             detail="Личные чаты доступны только между преподавателем и студентом.",
@@ -110,6 +122,8 @@ def create_message(
         current_user,
         db,
     )
+    if current_user.role == "admin" and chat.chat_type != "admin":
+        raise HTTPException(status_code=403, detail="Администратор может писать только в административные чаты.")
 
     new_message = MessageModel(
         chat_id=chat_id,
@@ -137,11 +151,13 @@ def upload_chat_attachment(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ) -> ChatMessage:
-    require_chat_participant(
+    chat = require_chat_participant(
         db.scalar(select(ChatModel).where(ChatModel.id == chat_id)),
         current_user,
         db,
     )
+    if current_user.role == "admin" and chat.chat_type != "admin":
+        raise HTTPException(status_code=403, detail="Администратор может отправлять вложения только в административные чаты.")
 
     file_name, mime_type, file_url = save_upload(file, f"chats/{chat_id}")
     message_type = "image" if (file.content_type or "").startswith("image/") else "file"

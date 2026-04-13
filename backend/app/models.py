@@ -17,6 +17,10 @@ class User(Base):
     bio: Mapped[str] = mapped_column(Text, default="")
     avatar: Mapped[str] = mapped_column(String(12), default="EF")
     online: Mapped[bool] = mapped_column(Boolean, default=False)
+    is_blocked: Mapped[bool] = mapped_column(Boolean, default=False)
+    blocked_until: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+    session_revoked_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+    last_login_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
 
     taught_courses: Mapped[list["Course"]] = relationship(back_populates="teacher")
     created_assignments: Mapped[list["Assignment"]] = relationship(
@@ -35,6 +39,7 @@ class User(Base):
     progress_events: Mapped[list["ProgressHistory"]] = relationship(back_populates="student")
     notifications: Mapped[list["Notification"]] = relationship(back_populates="user")
     messages: Mapped[list["Message"]] = relationship(back_populates="sender")
+    security_events: Mapped[list["SecurityEvent"]] = relationship(back_populates="user")
 
 
 class Course(Base):
@@ -263,6 +268,43 @@ class Notification(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
 
     user: Mapped["User"] = relationship(back_populates="notifications")
+
+
+class ModerationReport(Base):
+    __tablename__ = "moderation_reports"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
+    reporter_id: Mapped[int] = mapped_column(ForeignKey("users.id"), index=True)
+    target_type: Mapped[str] = mapped_column(String(40), index=True)
+    target_id: Mapped[int] = mapped_column(Integer, index=True)
+    reason: Mapped[str] = mapped_column(Text)
+    status: Mapped[str] = mapped_column(String(30), default="open")
+    resolution_note: Mapped[str | None] = mapped_column(Text, nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+    resolved_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+
+    reporter: Mapped["User"] = relationship()
+
+
+class SecurityEvent(Base):
+    __tablename__ = "security_events"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
+    user_id: Mapped[int | None] = mapped_column(ForeignKey("users.id"), index=True, nullable=True)
+    event_type: Mapped[str] = mapped_column(String(60), index=True)
+    severity: Mapped[str] = mapped_column(String(20), default="info")
+    details: Mapped[str] = mapped_column(Text, default="")
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+
+    user: Mapped["User | None"] = relationship(back_populates="security_events")
+
+
+class PlatformSetting(Base):
+    __tablename__ = "platform_settings"
+
+    key: Mapped[str] = mapped_column(String(80), primary_key=True)
+    value: Mapped[str] = mapped_column(Text, default="")
+    updated_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
 
 
 class ProgressHistory(Base):

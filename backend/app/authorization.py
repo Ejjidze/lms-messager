@@ -61,7 +61,7 @@ def assignment_visible_to_user(assignment: Assignment, user: User, db: Session) 
     if user.role == "admin":
         return True
     if user.role == "teacher":
-        return True
+        return assignment.created_by_teacher_id == user.id
     if user.role == "student":
         return True
     return False
@@ -87,6 +87,11 @@ def require_assignment_review_access(assignment: Assignment | None, user: User, 
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Просмотр всех решений доступен только преподавателю курса или администратору.",
+        )
+    if assignment.created_by_teacher_id != user.id:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Просматривать решения можно только по своим заданиям.",
         )
     return assignment
 

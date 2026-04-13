@@ -17,4 +17,5 @@ class TokenResponse(BaseModel):
 class TokenPayload(BaseModel):
     sub: str
     user_id: int
+    iat: int | None = None
     exp: int

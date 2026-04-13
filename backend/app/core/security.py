@@ -12,12 +12,14 @@ def hash_password(password: str) -> str:
 
 
 def create_access_token(subject: str, user_id: int, expires_delta: timedelta | None = None) -> str:
+    issued_at = datetime.now(UTC)
     expire = datetime.now(UTC) + (
         expires_delta or timedelta(minutes=settings.jwt_access_token_expire_minutes)
     )
     payload = {
         "sub": subject,
         "user_id": user_id,
+        "iat": int(issued_at.timestamp()),
         "exp": expire,
     }
     return jwt.encode(payload, settings.jwt_secret_key, algorithm=settings.jwt_algorithm)

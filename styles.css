@@ -165,9 +165,23 @@ body {
   align-items: center;
   border-radius: 0.9rem;
   padding: 0.85rem 1rem;
+  padding-right: 2rem;
   color: var(--app-primary);
   font-weight: 700;
   transition: 0.2s ease;
+  position: relative;
+}
+
+.nav-deadline-dot {
+  width: 0.62rem;
+  height: 0.62rem;
+  border-radius: 999px;
+  background: #dc3545;
+  position: absolute;
+  right: 0.95rem;
+  top: 50%;
+  transform: translateY(-50%);
+  box-shadow: 0 0 0 2px #fff;
 }
 
 .main-nav .nav-link.active,
@@ -232,6 +246,47 @@ body {
 
 .card {
   border-radius: var(--app-radius) !important;
+}
+
+.subject-activities-modal {
+  position: fixed;
+  inset: 0;
+  z-index: 1200;
+}
+
+.subject-activities-backdrop {
+  position: absolute;
+  inset: 0;
+  background: rgba(15, 23, 42, 0.42);
+}
+
+.subject-activities-dialog {
+  position: relative;
+  width: min(920px, calc(100vw - 2rem));
+  max-height: calc(100vh - 2rem);
+  margin: 1rem auto;
+  border-radius: 1rem;
+  background: #fff;
+  box-shadow: var(--app-shadow);
+  border: 1px solid var(--app-border);
+  display: flex;
+  flex-direction: column;
+}
+
+.subject-activities-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 1rem 1.25rem;
+  border-bottom: 1px solid var(--app-border);
+}
+
+.subject-activities-content {
+  padding: 1rem 1.25rem 1.25rem;
+  overflow: auto;
+  display: grid;
+  gap: 0.9rem;
 }
 
 .hero-card {
@@ -563,13 +618,29 @@ body {
 
 .messenger-page .messenger-layout {
   grid-template-columns: minmax(0, 1fr);
+  grid-template-rows: auto auto minmax(0, 1fr);
   height: 100%;
   min-height: 0;
   margin-top: 0.75rem !important;
 }
 
 .messenger-page .chat-list {
-  display: none;
+  display: flex;
+  gap: 0.65rem;
+  overflow-x: auto;
+  overflow-y: hidden;
+  max-height: none;
+  padding-bottom: 0.2rem;
+}
+
+.messenger-chat-label {
+  margin: 0;
+}
+
+.messenger-page .chat-item {
+  min-width: 220px;
+  max-width: 280px;
+  padding: 0.75rem 0.85rem;
 }
 
 .messenger-page .chat-window {
@@ -766,6 +837,16 @@ body {
 .admin-grid {
   margin-bottom: 1rem;
   grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.admin-section-tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.6rem;
+}
+
+.admin-section-tabs a {
+  text-decoration: none;
 }
 
 .moderation-item {
@@ -1138,5 +1219,78 @@ body {
 
   .message {
     max-width: 100%;
+  }
+}
+
+.schedule-sheet {
+  background: #ffffff;
+  border-radius: 1.5rem;
+  padding: clamp(1rem, 2vw, 1.75rem);
+  display: grid;
+  gap: 1.25rem;
+}
+
+.schedule-day-card {
+  background: #ffffff;
+  border-radius: 1.75rem;
+  padding: 1.6rem 1.5rem 1.35rem;
+  box-shadow: 0 2px 10px rgba(12, 12, 13, 0.1);
+  border: 1px solid rgba(40, 40, 40, 0.06);
+}
+
+.schedule-day-card h2 {
+  margin: 0 0 1rem;
+  font-size: clamp(1.15rem, 2.1vw, 1.65rem);
+  font-weight: 800;
+  letter-spacing: 0.02em;
+  color: #101114;
+}
+
+.schedule-day-rows {
+  border-top: 1px solid #cfcfd2;
+}
+
+.schedule-day-row {
+  display: grid;
+  grid-template-columns: 92px minmax(0, 1fr) 88px;
+  gap: 1rem;
+  align-items: center;
+  min-height: 4.2rem;
+  border-bottom: 1px solid #cfcfd2;
+  color: #17181a;
+  font-size: clamp(0.9rem, 1.35vw, 1.05rem);
+}
+
+.schedule-day-row span:nth-child(1),
+.schedule-day-row span:nth-child(2),
+.schedule-day-row span:nth-child(3) {
+  font-weight: 500;
+}
+
+.schedule-day-row span:nth-child(3) {
+  text-align: right;
+}
+
+.schedule-day-row-edit {
+  grid-template-columns: 92px minmax(0, 1fr) 88px;
+}
+
+.schedule-day-row-edit .form-control {
+  border-radius: 0.55rem;
+  border-color: #ccd3de;
+  min-height: 2.2rem;
+}
+
+@media (max-width: 767.98px) {
+  .schedule-day-card {
+    padding: 1.2rem 1rem 1rem;
+    border-radius: 1.25rem;
+  }
+
+  .schedule-day-row {
+    grid-template-columns: 72px minmax(0, 1fr) 72px;
+    gap: 0.6rem;
+    min-height: 3.4rem;
+    font-size: 0.95rem;
   }
 }

@@ -9,7 +9,7 @@ from sqlalchemy import inspect
 
 from app.core.config import settings
 from app.database import SessionLocal, engine
-from app.routers import analytics, assignments, auth, chats, courses, enrollments, grades, learning, notifications, progress, users, websocket
+from app.routers import admin, analytics, assignments, auth, chats, courses, enrollments, grades, learning, notifications, progress, schedule, users, websocket
 from app.seed import seed_database
 from app.storage import ensure_media_root
 
@@ -23,9 +23,19 @@ DIRECTORY_FILE = PROJECT_ROOT / "directory.html"
 MESSENGER_FILE = PROJECT_ROOT / "messenger.html"
 PROFILE_FILE = PROJECT_ROOT / "profile.html"
 ADMIN_FILE = PROJECT_ROOT / "admin.html"
+ADMIN_MODERATION_FILE = PROJECT_ROOT / "admin-moderation.html"
+ADMIN_SETTINGS_FILE = PROJECT_ROOT / "admin-settings.html"
 STYLES_FILE = PROJECT_ROOT / "styles.css"
 APP_JS_FILE = PROJECT_ROOT / "app.js"
 SITE_JS_FILE = PROJECT_ROOT / "site.js"
+
+
+def frontend_file_response(path: Path, media_type: str | None = None) -> FileResponse:
+    return FileResponse(
+        path,
+        media_type=media_type,
+        headers={"Cache-Control": "no-store, no-cache, must-revalidate, max-age=0"},
+    )
 
 
 @asynccontextmanager
@@ -65,12 +75,12 @@ app.mount(
 
 @app.get("/", include_in_schema=False)
 def frontend_login() -> FileResponse:
-    return FileResponse(LOGIN_FILE)
+    return frontend_file_response(LOGIN_FILE)
 
 
 @app.get("/login", include_in_schema=False)
 def frontend_login_alias() -> FileResponse:
-    return FileResponse(LOGIN_FILE)
+    return frontend_file_response(LOGIN_FILE)
 
 
 @app.get("/dashboard", include_in_schema=False)
@@ -80,56 +90,62 @@ def frontend_index() -> RedirectResponse:
 
 @app.get("/schedule", include_in_schema=False)
 def frontend_schedule() -> FileResponse:
-    return FileResponse(SCHEDULE_FILE)
+    return frontend_file_response(SCHEDULE_FILE)
 
 
 @app.get("/assignments", include_in_schema=False)
 def frontend_assignments() -> FileResponse:
-    return FileResponse(ASSIGNMENTS_FILE)
+    return frontend_file_response(ASSIGNMENTS_FILE)
 
 
 @app.get("/tests", include_in_schema=False)
 def frontend_tests() -> FileResponse:
-    return FileResponse(TESTS_FILE)
+    return frontend_file_response(TESTS_FILE)
 
 
 @app.get("/directory", include_in_schema=False)
 def frontend_directory() -> FileResponse:
-    return FileResponse(DIRECTORY_FILE)
+    return frontend_file_response(DIRECTORY_FILE)
 
 
 @app.get("/messenger", include_in_schema=False)
 def frontend_messenger() -> FileResponse:
-    return FileResponse(MESSENGER_FILE)
+    return frontend_file_response(MESSENGER_FILE)
 
 
 @app.get("/profile", include_in_schema=False)
 def frontend_profile() -> FileResponse:
-    return FileResponse(PROFILE_FILE)
+    return frontend_file_response(PROFILE_FILE)
 
 
 @app.get("/admin", include_in_schema=False)
 def frontend_admin() -> FileResponse:
-    return FileResponse(ADMIN_FILE)
+    return frontend_file_response(ADMIN_FILE)
+
+
+@app.get("/admin/moderation", include_in_schema=False)
+def frontend_admin_moderation() -> FileResponse:
+    return frontend_file_response(ADMIN_MODERATION_FILE)
+
+
+@app.get("/admin/settings", include_in_schema=False)
+def frontend_admin_settings() -> FileResponse:
+    return frontend_file_response(ADMIN_SETTINGS_FILE)
 
 
 @app.get("/styles.css", include_in_schema=False)
 def frontend_styles() -> FileResponse:
-    return FileResponse(STYLES_FILE, media_type="text/css")
+    return frontend_file_response(STYLES_FILE, media_type="text/css")
 
 
 @app.get("/app.js", include_in_schema=False)
 def frontend_app_js() -> FileResponse:
-    return FileResponse(APP_JS_FILE, media_type="application/javascript")
+    return frontend_file_response(APP_JS_FILE, media_type="application/javascript")
 
 
 @app.get("/site.js", include_in_schema=False)
 def frontend_site_js() -> FileResponse:
-    return FileResponse(
-        SITE_JS_FILE,
-        media_type="application/javascript",
-        headers={"Cache-Control": "no-store, no-cache, must-revalidate, max-age=0"},
-    )
+    return frontend_file_response(SITE_JS_FILE, media_type="application/javascript")
 
 
 @app.get("/favicon.ico", include_in_schema=False)
@@ -143,6 +159,7 @@ def healthcheck() -> dict[str, str]:
 
 
 app.include_router(auth.router, prefix="/api")
+app.include_router(admin.router, prefix="/api")
 app.include_router(users.router, prefix="/api")
 app.include_router(courses.router, prefix="/api")
 app.include_router(analytics.router, prefix="/api")
@@ -152,5 +169,6 @@ app.include_router(grades.router, prefix="/api")
 app.include_router(learning.router, prefix="/api")
 app.include_router(notifications.router, prefix="/api")
 app.include_router(progress.router, prefix="/api")
+app.include_router(schedule.router, prefix="/api")
 app.include_router(chats.router, prefix="/api")
 app.include_router(websocket.router)
