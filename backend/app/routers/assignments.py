@@ -3,7 +3,7 @@ from pathlib import Path
 
 from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile, status
 from fastapi.responses import FileResponse
-from sqlalchemy import select
+from sqlalchemy import delete, func, select
 from sqlalchemy.orm import Session, selectinload
 
 from app.authorization import (
@@ -31,6 +31,29 @@ from app.storage import save_upload
 
 router = APIRouter(prefix="/assignments", tags=["assignments"])
 MAX_SUBMISSION_FILE_SIZE_BYTES = 50 * 1024 * 1024
+MAX_TOTAL_ASSIGNMENT_SCORE_PER_SUBJECT = 50
+ALLOWED_ASSIGNMENT_MATERIAL_EXTENSIONS = {
+    ".txt",
+    ".doc",
+    ".docx",
+    ".xls",
+    ".xlsx",
+    ".ppt",
+    ".pptx",
+    ".png",
+    ".jpg",
+    ".jpeg",
+    ".gif",
+    ".webp",
+    ".bmp",
+    ".tif",
+    ".tiff",
+    ".zip",
+    ".rar",
+    ".7z",
+    ".tar",
+    ".gz",
+}
 
 
 def resolve_media_file_path(file_url: str) -> Path:
@@ -97,8 +120,11 @@ def list_assignments(
                     else "Не указан"
                 ),
                 can_delete=(
-                    current_user.role == "teacher"
-                    and item.created_by_teacher_id == current_user.id
+                    current_user.role == "admin"
+                    or (
+                        current_user.role == "teacher"
+                        and item.created_by_teacher_id == current_user.id
+                    )
                 ),
                 submissions_count=len(submissions),
                 has_ungraded_submissions=any(submission.grade_record is None for submission in submissions),
@@ -119,10 +145,16 @@ def delete_assignment(
     if not assignment:
         raise HTTPException(status_code=404, detail="Задание не найдено.")
 
-    if current_user.role != "teacher":
-        raise HTTPException(status_code=403, detail="Удалять задания может только преподаватель.")
-    if assignment.created_by_teacher_id != current_user.id:
+    if current_user.role not in {"teacher", "admin"}:
+        raise HTTPException(status_code=403, detail="Удалять задания может преподаватель или админ.")
+    if current_user.role == "teacher" and assignment.created_by_teacher_id != current_user.id:
         raise HTTPException(status_code=403, detail="Можно удалять только свои задания.")
+
+    submission_ids = db.scalars(
+        select(SubmissionModel.id).where(SubmissionModel.assignment_id == assignment_id)
+    ).all()
+    if submission_ids:
+        db.execute(delete(GradeModel).where(GradeModel.submission_id.in_(submission_ids)))
 
     db.delete(assignment)
     db.commit()
@@ -167,12 +199,41 @@ def create_assignment_with_material(
 
     if current_user.role not in {"teacher", "admin"}:
         raise HTTPException(status_code=403, detail="Создавать задания может только преподаватель.")
-    if max_score < 1 or max_score > 1000:
-        raise HTTPException(status_code=400, detail="Максимальный балл должен быть в диапазоне 1..1000.")
+    if max_score < 1 or max_score > MAX_TOTAL_ASSIGNMENT_SCORE_PER_SUBJECT:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Максимальный балл за одно задание должен быть в диапазоне 1..{MAX_TOTAL_ASSIGNMENT_SCORE_PER_SUBJECT}.",
+        )
 
-    original_name = (file.filename or "").lower()
-    if not original_name.endswith(".txt"):
-        raise HTTPException(status_code=400, detail="Разрешены только текстовые файлы формата .txt")
+    current_total_score = db.scalar(
+        select(func.coalesce(func.sum(AssignmentModel.max_score), 0)).where(
+            AssignmentModel.course_id == course_id,
+            AssignmentModel.created_by_teacher_id == current_user.id,
+        )
+    ) or 0
+    next_total_score = int(current_total_score) + int(max_score)
+    if next_total_score > MAX_TOTAL_ASSIGNMENT_SCORE_PER_SUBJECT:
+        remaining = max(MAX_TOTAL_ASSIGNMENT_SCORE_PER_SUBJECT - int(current_total_score), 0)
+        raise HTTPException(
+            status_code=400,
+            detail=(
+                "Сумма максимальных баллов по предмету не может превышать "
+                f"{MAX_TOTAL_ASSIGNMENT_SCORE_PER_SUBJECT}. Доступно: {remaining}."
+            ),
+        )
+
+    original_name = (file.filename or "").strip()
+    extension = Path(original_name).suffix.lower()
+    if extension not in ALLOWED_ASSIGNMENT_MATERIAL_EXTENSIONS:
+        raise HTTPException(
+            status_code=400,
+            detail=(
+                "Недопустимый формат файла. Разрешены: "
+                "TXT, DOC, DOCX, XLS, XLSX, PPT, PPTX, "
+                "PNG, JPG, JPEG, GIF, WEBP, BMP, TIF, TIFF, "
+                "ZIP, RAR, 7Z, TAR, GZ."
+            ),
+        )
 
     file_name, mime_type, file_url = save_upload(file, f"assignment-materials/{course_id}")
     assignment = AssignmentModel(

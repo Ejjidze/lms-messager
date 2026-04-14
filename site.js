@@ -99,6 +99,12 @@ const ADMIN_TEACHER_SUBJECTS = {
   teacher10: "Облачные технологии (CLD307)",
 };
 
+const ALLOWED_ASSIGNMENT_MATERIAL_EXTENSIONS = new Set([
+  "txt", "doc", "docx", "xls", "xlsx", "ppt", "pptx",
+  "png", "jpg", "jpeg", "gif", "webp", "bmp", "tif", "tiff",
+  "zip", "rar", "7z", "tar", "gz",
+]);
+
 function getSession() {
   try {
     const raw = window.localStorage.getItem(STORAGE_KEY);
@@ -151,7 +157,7 @@ function guardRoleAccess(session) {
 
   if (
     session.role === "admin"
-    && ["/assignments", "/messenger", "/directory", "/tests"].includes(pathname)
+    && ["/profile", "/assignments", "/messenger", "/directory", "/tests"].includes(pathname)
   ) {
     window.location.replace("/admin");
   }
@@ -212,6 +218,25 @@ function buildDraftQuizQuestions(questionsCount) {
       { text: "Вариант 2", is_correct: false },
     ],
   }));
+}
+
+function extractSubjectCode(value) {
+  const text = String(value || "").toUpperCase();
+  const match = text.match(/([A-Z]{2,}\d{3}(?:-\d+)?)/);
+  if (!match) {
+    return "";
+  }
+  return match[1].replace(/-\d+$/, "");
+}
+
+function normalizeSubjectTitle(rawTitle) {
+  const title = String(rawTitle || "").trim();
+  if (!title) {
+    return "";
+  }
+  return title
+    .replace(/\s*[-–—]\s*[A-Z]{2,}\d{3}(?:-\d+)?\s*$/i, "")
+    .trim();
 }
 
 async function apiRequest(path, options = {}) {
@@ -321,18 +346,19 @@ function applySessionToUi(session) {
   });
 
   if (session.role === "admin") {
-    document.querySelectorAll('a[href="/assignments"], a[href="/messenger"], a[href="/directory"], a[href="/tests"]').forEach((element) => {
+    document.querySelectorAll('a[href="/profile"], a[href="/assignments"], a[href="/messenger"], a[href="/directory"], a[href="/tests"]').forEach((element) => {
       element.hidden = true;
     });
   }
 
   const directoryLabel = session.role === "student"
-    ? "Преподаватели"
+    ? "Мои преподаватели"
     : session.role === "teacher"
       ? "Студенты"
       : "Пользователи";
   document.querySelectorAll('a[href="/directory"]').forEach((element) => {
     element.textContent = directoryLabel;
+    element.hidden = session.role === "admin";
   });
 
   const assignmentsLabel = session.role === "student" ? "Предметы" : "Задания";
@@ -426,6 +452,82 @@ function renderProfileInfo(session) {
   deanValue.textContent = STUDENT_PROFILE_META.curator;
 }
 
+async function renderStudentGpa(session) {
+  const gpaNode = document.getElementById("profileGpaValue");
+  if (!gpaNode || session.role !== "student") {
+    return;
+  }
+
+  try {
+    const assignments = await apiRequest("/api/assignments");
+    const gradedItems = assignments.filter((assignment) => assignment.current_user_grade != null);
+    if (!gradedItems.length) {
+      gpaNode.textContent = "0.00 / 4.00";
+      return;
+    }
+
+    const totals = gradedItems.reduce((acc, assignment) => {
+      const maxScore = Math.max(0, Number(assignment.max_score) || 0);
+      const score = Math.max(0, Number(assignment.current_user_grade) || 0);
+      if (maxScore <= 0) {
+        return acc;
+      }
+      acc.totalScore += Math.min(score, maxScore);
+      acc.totalMax += maxScore;
+      return acc;
+    }, { totalScore: 0, totalMax: 0 });
+
+    if (totals.totalMax <= 0) {
+      gpaNode.textContent = "0.00 / 4.00";
+      return;
+    }
+
+    const gpa = Math.max(0, Math.min(4, (totals.totalScore / totals.totalMax) * 4));
+    gpaNode.textContent = `${gpa.toFixed(2)} / 4.00`;
+  } catch {
+    gpaNode.textContent = "0.00 / 4.00";
+  }
+}
+
+async function renderStudentAttendance(session) {
+  const attendanceNode = document.getElementById("profileAttendanceValue");
+  const nbPillNode = document.getElementById("profileAttendanceNbPill");
+  const attendanceAlertNode = document.getElementById("profileAttendanceAlert");
+  if (!attendanceNode || session.role !== "student") {
+    return;
+  }
+
+  const MAX_NB = 72;
+  try {
+    const summary = await apiRequest("/api/users/me/attendance-summary");
+    const totalNb = Math.max(0, (summary || []).reduce((acc, item) => acc + (Number(item.nb_count) || 0), 0));
+    const cappedNb = Math.min(totalNb, MAX_NB);
+    const percent = ((MAX_NB - cappedNb) / MAX_NB) * 100;
+    attendanceNode.textContent = `${percent.toFixed(2)}%`;
+    if (nbPillNode) {
+      nbPillNode.textContent = `НБ: ${cappedNb}/${MAX_NB}`;
+      nbPillNode.classList.remove("nb-warning", "nb-danger");
+      if (cappedNb >= MAX_NB) {
+        nbPillNode.classList.add("nb-danger");
+      } else if (cappedNb >= 36) {
+        nbPillNode.classList.add("nb-warning");
+      }
+    }
+    if (attendanceAlertNode) {
+      attendanceAlertNode.hidden = cappedNb < MAX_NB;
+    }
+  } catch {
+    attendanceNode.textContent = "100%";
+    if (nbPillNode) {
+      nbPillNode.textContent = "НБ: 0/72";
+      nbPillNode.classList.remove("nb-warning", "nb-danger");
+    }
+    if (attendanceAlertNode) {
+      attendanceAlertNode.hidden = true;
+    }
+  }
+}
+
 async function renderSchedulePage(session) {
   const sheet = document.getElementById("scheduleSheet");
   if (!sheet) {
@@ -437,9 +539,19 @@ async function renderSchedulePage(session) {
   const editToggleButton = document.getElementById("scheduleEditToggle");
   const saveButton = document.getElementById("scheduleSaveButton");
   const cancelButton = document.getElementById("scheduleCancelButton");
+  const groupSelect = document.getElementById("scheduleGroupSelect");
 
   let schedule = null;
   let editMode = false;
+  let selectedGroup = "321";
+
+  if (session.role === "admin" && groupSelect) {
+    const savedGroup = window.localStorage.getItem("adminScheduleGroup");
+    if (savedGroup === "320" || savedGroup === "321") {
+      selectedGroup = savedGroup;
+    }
+    groupSelect.value = selectedGroup;
+  }
 
   const setStatus = (message, tone = "info") => {
     if (!statusBox) {
@@ -465,6 +577,66 @@ async function renderSchedulePage(session) {
       return { day_key: dayKey, day_label: dayLabel, lessons };
     });
     return { days };
+  };
+
+  const buildScheduleUrl = () => {
+    if (session.role !== "admin") {
+      return "/api/schedule";
+    }
+    const group = selectedGroup === "320" ? "320" : "321";
+    return `/api/schedule?group=${group}`;
+  };
+
+  const loadSchedule = async () => {
+    schedule = await apiRequest(buildScheduleUrl());
+    if (session.role === "teacher" && schedule?.days) {
+      const subjectMeta = String(ADMIN_TEACHER_SUBJECTS[session.email] || "");
+      const subjectCodeMatch = subjectMeta.match(/\(([A-Z0-9-]+)\)/i);
+      const subjectCode = (subjectCodeMatch?.[1] || "").toUpperCase();
+      const teacherOffice = String(TEACHER_PROFILE_META[session.email]?.office || "A101");
+      const buildRoomSequence = (baseOffice) => {
+        const normalized = String(baseOffice || "").toUpperCase().trim();
+        const match = normalized.match(/^([A-E])([1-5])(\d{2})$/);
+        if (!match) {
+          return [normalized || "A101", "A102", "A103", "A104"];
+        }
+        const block = match[1];
+        const floor = match[2];
+        const roomNumber = Number(match[3]);
+        const offsets = [0, 2, 4, 6];
+        return offsets.map((offset) => {
+          const nextRoom = ((roomNumber - 1 + offset) % 20) + 1;
+          return `${block}${floor}${String(nextRoom).padStart(2, "0")}`;
+        });
+      };
+      const roomSequence = buildRoomSequence(teacherOffice);
+      if (subjectCode) {
+        const fallbackSubject = subjectMeta.includes(subjectCode)
+          ? subjectMeta
+          : `${subjectMeta} (${subjectCode})`;
+        schedule = {
+          ...schedule,
+          days: schedule.days.map((day) => ({
+            ...day,
+            lessons: (() => {
+              const defaultTimes = ["08:30", "10:00", "11:30", "13:00"];
+              const existingTimes = (day.lessons || [])
+                .map((lesson) => String(lesson.time || "").trim())
+                .filter(Boolean);
+              const times = [...new Set([...existingTimes, ...defaultTimes])].slice(0, 4);
+              while (times.length < 4) {
+                times.push(defaultTimes[times.length] || "08:30");
+              }
+              return times.map((time, index) => ({
+                time,
+                subject: fallbackSubject,
+                room: roomSequence[index % roomSequence.length],
+              }));
+            })(),
+          })),
+        };
+      }
+    }
   };
 
   const renderSheet = () => {
@@ -503,20 +675,43 @@ async function renderSchedulePage(session) {
   };
 
   try {
-    schedule = await apiRequest("/api/schedule");
+    await loadSchedule();
   } catch (error) {
     setStatus(error.message || "Не удалось загрузить расписание.", "error");
     return;
   }
 
-  if (session.role === "admin" && adminControls) {
-    adminControls.hidden = false;
+  if (adminControls) {
+    if (session.role === "admin") {
+      adminControls.hidden = false;
+    } else {
+      adminControls.remove();
+    }
   }
 
   renderSheet();
 
   if (session.role !== "admin" || !editToggleButton || !saveButton || !cancelButton) {
     return;
+  }
+
+  if (groupSelect && !groupSelect.dataset.bound) {
+    groupSelect.dataset.bound = "true";
+    groupSelect.addEventListener("change", async () => {
+      selectedGroup = groupSelect.value === "320" ? "320" : "321";
+      window.localStorage.setItem("adminScheduleGroup", selectedGroup);
+      editMode = false;
+      editToggleButton.hidden = false;
+      saveButton.hidden = true;
+      cancelButton.hidden = true;
+      setStatus("");
+      try {
+        await loadSchedule();
+        renderSheet();
+      } catch (error) {
+        setStatus(error.message || "Не удалось загрузить расписание группы.", "error");
+      }
+    });
   }
 
   if (!editToggleButton.dataset.bound) {
@@ -558,7 +753,7 @@ async function renderSchedulePage(session) {
       }
 
       try {
-        schedule = await apiRequest("/api/schedule", {
+        schedule = await apiRequest(buildScheduleUrl(), {
           method: "PUT",
           body: JSON.stringify(payload),
         });
@@ -707,6 +902,7 @@ function renderAssignmentsPage(session) {
   };
 
   const studentSubjects = new Map();
+  const subjectNbDatesByKey = new Map();
 
   const handleUploadFormSubmit = async (uploadForm) => {
     const assignmentId = uploadForm.dataset.assignmentId;
@@ -760,6 +956,66 @@ function renderAssignmentsPage(session) {
       }
       event.preventDefault();
       await handleUploadFormSubmit(uploadForm);
+    });
+  }
+
+  let nbDatesModal = document.getElementById("nbDatesModal");
+  if (!nbDatesModal) {
+    nbDatesModal = document.createElement("div");
+    nbDatesModal.id = "nbDatesModal";
+    nbDatesModal.className = "subject-activities-modal";
+    nbDatesModal.hidden = true;
+    nbDatesModal.innerHTML = `
+      <div class="subject-activities-backdrop" data-close-nb-dates></div>
+      <div class="subject-activities-dialog" role="dialog" aria-modal="true" aria-labelledby="nbDatesTitle">
+        <div class="subject-activities-header">
+          <h2 id="nbDatesTitle" class="h5 mb-0">Даты НБ</h2>
+          <button type="button" class="btn btn-sm btn-outline-secondary" data-close-nb-dates>Закрыть</button>
+        </div>
+        <div class="subject-activities-content" id="nbDatesContent"></div>
+      </div>
+    `;
+    document.body.appendChild(nbDatesModal);
+  }
+
+  const closeNbDatesModal = () => {
+    if (!nbDatesModal) {
+      return;
+    }
+    nbDatesModal.hidden = true;
+    document.body.style.removeProperty("overflow");
+  };
+
+  const openNbDatesModal = (subjectTitle, dates) => {
+    if (!nbDatesModal) {
+      return;
+    }
+    const titleNode = nbDatesModal.querySelector("#nbDatesTitle");
+    const contentNode = nbDatesModal.querySelector("#nbDatesContent");
+    if (titleNode) {
+      titleNode.textContent = `НБ по предмету: ${subjectTitle}`;
+    }
+    if (contentNode) {
+      if (!dates.length) {
+        contentNode.innerHTML = "<p class='submission-meta'>По этому предмету пока нет НБ.</p>";
+      } else {
+        contentNode.innerHTML = `
+          <ul class="mb-0 ps-3">
+            ${dates.map((item) => `<li>${escapeHtml(item)}</li>`).join("")}
+          </ul>
+        `;
+      }
+    }
+    nbDatesModal.hidden = false;
+    document.body.style.overflow = "hidden";
+  };
+
+  if (!nbDatesModal.dataset.bound) {
+    nbDatesModal.dataset.bound = "true";
+    nbDatesModal.addEventListener("click", (event) => {
+      if (event.target.closest("[data-close-nb-dates]")) {
+        closeNbDatesModal();
+      }
     });
   }
 
@@ -854,6 +1110,28 @@ function renderAssignmentsPage(session) {
           if (subject) {
             openSubjectActivitiesModal(subject);
           }
+          return;
+        }
+
+        const nbDatesButton = event.target.closest("[data-show-nb-dates]");
+        if (nbDatesButton) {
+          const subjectKey = String(nbDatesButton.dataset.showNbDates || "");
+          const dates = subjectNbDatesByKey.get(subjectKey) || [];
+          const formatted = dates
+            .map((value) => {
+              const date = new Date(`${value}T00:00:00`);
+              if (Number.isNaN(date.getTime())) {
+                return value;
+              }
+              return new Intl.DateTimeFormat("ru-RU", {
+                day: "2-digit",
+                month: "2-digit",
+                year: "numeric",
+              }).format(date);
+            })
+            .sort((a, b) => a.localeCompare(b, "ru"));
+          const subject = studentSubjects.get(subjectKey);
+          openNbDatesModal(subject?.title || "Предмет", formatted);
           return;
         }
 
@@ -1019,32 +1297,173 @@ function renderAssignmentsPage(session) {
       }
 
       if (session.role === "student") {
-        let courseList = [];
-        try {
-          courseList = await apiRequest("/api/courses");
-        } catch {
-          courseList = [];
-        }
-        const courseMap = new Map(courseList.map((course) => [course.id, course]));
+        const [courseList, scheduleData, teachersDirectory, attendanceSummary] = await Promise.all([
+          (async () => {
+            try {
+              return await apiRequest("/api/courses");
+            } catch {
+              return [];
+            }
+          })(),
+          (async () => {
+            try {
+              return await apiRequest("/api/schedule");
+            } catch {
+              return { days: [] };
+            }
+          })(),
+          (async () => {
+            try {
+              return await apiRequest("/api/users/directory");
+            } catch {
+              return [];
+            }
+          })(),
+          (async () => {
+            try {
+              return await apiRequest("/api/users/me/attendance-summary");
+            } catch {
+              return [];
+            }
+          })(),
+        ]);
+
+        const teacherCodeToName = new Map();
+        const teacherCodeToId = new Map();
+        const teacherNameToCode = new Map();
+        const teacherNameToId = new Map();
+        teachersDirectory.forEach((teacher) => {
+          const subjectMeta = String(ADMIN_TEACHER_SUBJECTS[teacher.email] || "");
+          const subjectCode = extractSubjectCode(subjectMeta);
+          if (teacher.full_name) {
+            teacherNameToId.set(String(teacher.full_name).toLowerCase(), teacher.id);
+          }
+          if (subjectCode) {
+            teacherCodeToName.set(subjectCode, teacher.full_name || "Преподаватель");
+            teacherCodeToId.set(subjectCode, teacher.id);
+            teacherNameToCode.set(String(teacher.full_name || "").toLowerCase(), subjectCode);
+          }
+        });
+        const attendanceByTeacherId = new Map(
+          (attendanceSummary || []).map((item) => [Number(item.teacher_id), Number(item.nb_count) || 0]),
+        );
+        const attendanceDatesByTeacherId = new Map(
+          (attendanceSummary || []).map((item) => [Number(item.teacher_id), Array.isArray(item.dates) ? item.dates : []]),
+        );
+
         studentSubjects.clear();
+        const scheduleSubjects = new Map();
+        (scheduleData.days || []).forEach((day) => {
+          (day.lessons || []).forEach((lesson) => {
+            const rawSubject = String(lesson.subject || "").trim();
+            if (!rawSubject) {
+              return;
+            }
+            const subjectCode = extractSubjectCode(rawSubject);
+            if (!subjectCode || scheduleSubjects.has(subjectCode)) {
+              return;
+            }
+            scheduleSubjects.set(subjectCode, {
+              key: subjectCode,
+              courseId: 0,
+              title: normalizeSubjectTitle(rawSubject) || rawSubject,
+              teacherName: teacherCodeToName.get(subjectCode) || "Преподаватель",
+              teacherId: Number(teacherCodeToId.get(subjectCode)) || 0,
+              nbCount: attendanceByTeacherId.get(Number(teacherCodeToId.get(subjectCode))) || 0,
+              nbDates: attendanceDatesByTeacherId.get(Number(teacherCodeToId.get(subjectCode))) || [],
+              items: [],
+            });
+          });
+        });
+
+        scheduleSubjects.forEach((subject) => {
+          studentSubjects.set(subject.key, subject);
+        });
+
+        const courseMap = new Map(courseList.map((course) => [course.id, course]));
         assignments.forEach((assignment) => {
           const course = courseMap.get(assignment.course_id);
-          const courseId = Number(assignment.course_id);
-          const teacherName = assignment.teacher_name || course?.teacher_name || "Преподаватель";
-          const key = `${courseId}:${teacherName}`;
+          const teacherName = String(assignment.teacher_name || course?.teacher_name || "").trim();
+          const byTeacherCode = teacherName ? teacherNameToCode.get(teacherName.toLowerCase()) : "";
+          const assignmentSubjectCode = byTeacherCode
+            || extractSubjectCode(assignment.course_title)
+            || extractSubjectCode(assignment.title)
+            || extractSubjectCode(assignment.description);
+
+          let key = assignmentSubjectCode || "";
+          if (!key) {
+            key = `fallback:${assignment.id}`;
+          }
+
           if (!studentSubjects.has(key)) {
+            const fallbackTitle = assignment.course_title || course?.title || "Предмет не указан";
             studentSubjects.set(key, {
               key,
-              courseId,
-              title: assignment.course_title || course?.title || "Предмет не указан",
-              teacherName,
+              courseId: Number(assignment.course_id) || 0,
+              title: normalizeSubjectTitle(fallbackTitle) || fallbackTitle,
+              teacherName: teacherName || (assignmentSubjectCode ? (teacherCodeToName.get(assignmentSubjectCode) || "Преподаватель") : "Преподаватель"),
+              teacherId: assignmentSubjectCode ? (Number(teacherCodeToId.get(assignmentSubjectCode)) || 0) : (Number(teacherNameToId.get(teacherName.toLowerCase())) || 0),
+              nbCount: assignmentSubjectCode ? (attendanceByTeacherId.get(Number(teacherCodeToId.get(assignmentSubjectCode))) || 0) : 0,
+              nbDates: assignmentSubjectCode ? (attendanceDatesByTeacherId.get(Number(teacherCodeToId.get(assignmentSubjectCode))) || []) : [],
               items: [],
             });
           }
-          studentSubjects.get(key).items.push(assignment);
+          const targetSubject = studentSubjects.get(key);
+          targetSubject.items.push(assignment);
+          if ((!targetSubject.teacherName || targetSubject.teacherName === "Преподаватель") && teacherName) {
+            targetSubject.teacherName = teacherName;
+          }
+          if (targetSubject.nbCount === 0 && teacherName) {
+            const teacherIdByName = teacherNameToId.get(teacherName.toLowerCase());
+            if (teacherIdByName) {
+              targetSubject.teacherId = Number(teacherIdByName);
+              targetSubject.nbCount = attendanceByTeacherId.get(Number(teacherIdByName)) || 0;
+              targetSubject.nbDates = attendanceDatesByTeacherId.get(Number(teacherIdByName)) || [];
+            }
+          }
         });
 
-        const subjects = Array.from(studentSubjects.values()).sort((a, b) => a.title.localeCompare(b.title, "ru"));
+        const mergedSubjects = new Map();
+        studentSubjects.forEach((subject) => {
+          const normalizedTitle = normalizeSubjectTitle(subject.title) || subject.title || "Предмет не указан";
+          const dedupeKey = normalizedTitle.toLowerCase();
+          if (!mergedSubjects.has(dedupeKey)) {
+            mergedSubjects.set(dedupeKey, {
+              ...subject,
+              title: normalizedTitle,
+              teacherId: Number(subject.teacherId) || 0,
+              nbCount: Number(subject.nbCount) || 0,
+              nbDates: Array.isArray(subject.nbDates) ? subject.nbDates : [],
+              items: [...(subject.items || [])],
+            });
+            return;
+          }
+          const existing = mergedSubjects.get(dedupeKey);
+          existing.items.push(...(subject.items || []));
+          existing.nbCount = Math.max(Number(existing.nbCount) || 0, Number(subject.nbCount) || 0);
+          if ((existing.nbDates || []).length === 0 && Array.isArray(subject.nbDates) && subject.nbDates.length) {
+            existing.nbDates = subject.nbDates;
+          }
+          if ((existing.teacherName === "Преподаватель" || !existing.teacherName) && subject.teacherName && subject.teacherName !== "Преподаватель") {
+            existing.teacherName = subject.teacherName;
+            const teacherIdByName = teacherNameToId.get(String(subject.teacherName || "").toLowerCase());
+            if (teacherIdByName) {
+              existing.teacherId = Number(teacherIdByName);
+              existing.nbCount = attendanceByTeacherId.get(Number(teacherIdByName)) || existing.nbCount;
+              existing.nbDates = attendanceDatesByTeacherId.get(Number(teacherIdByName)) || existing.nbDates || [];
+            }
+          }
+          if (!existing.courseId && subject.courseId) {
+            existing.courseId = subject.courseId;
+          }
+        });
+
+        const subjects = Array.from(mergedSubjects.values()).sort((a, b) => a.title.localeCompare(b.title, "ru"));
+        subjectNbDatesByKey.clear();
+        subjects.forEach((subject) => {
+          const uniqueDates = [...new Set((subject.nbDates || []).map((value) => String(value)))];
+          subjectNbDatesByKey.set(String(subject.key), uniqueDates);
+        });
         const formatSubjectAverage = (value) => {
           const normalized = Math.max(0, Math.min(5, Number(value) || 0));
           return Number.isInteger(normalized) ? String(normalized) : normalized.toFixed(2);
@@ -1067,6 +1486,7 @@ function renderAssignmentsPage(session) {
                 <tr>
                   <th>Дисциплина</th>
                   <th>Преподаватель</th>
+                  <th>НБ</th>
                   <th>Средний балл</th>
                   <th>Действия</th>
                 </tr>
@@ -1087,7 +1507,12 @@ function renderAssignmentsPage(session) {
                     <tr>
                       <td>${escapeHtml(subject.title)}</td>
                       <td>${escapeHtml(subject.teacherName)}</td>
-                      <td>${formatSubjectAverage(averageFivePoint)}</td>
+                      <td>
+                        <button type="button" class="subject-metric-pill subject-metric-pill-button" data-show-nb-dates="${escapeHtml(subject.key)}">
+                          ${Number(subject.nbCount) || 0}
+                        </button>
+                      </td>
+                      <td><span class="subject-metric-pill">${formatSubjectAverage(averageFivePoint)}</span></td>
                       <td>
                         <button type="button" class="btn btn-outline-primary btn-sm" data-toggle-subject="${escapeHtml(subject.key)}">
                           Активности
@@ -1209,24 +1634,25 @@ function renderAssignmentsPage(session) {
       const formData = new FormData(form);
       const title = String(formData.get("title") || "").trim();
       const deadline = String(formData.get("deadline") || "").trim();
-      const maxScoreValue = Number(formData.get("max_score") || 100);
+      const maxScoreValue = Number(formData.get("max_score") || 5);
       const materialFile = formData.get("file");
 
       if (!title || !deadline || !(materialFile instanceof File) || !materialFile.name) {
         return;
       }
-      if (!Number.isFinite(maxScoreValue) || maxScoreValue < 1 || maxScoreValue > 1000) {
+      if (!Number.isFinite(maxScoreValue) || maxScoreValue < 1 || maxScoreValue > 50) {
         if (emptyState) {
           emptyState.hidden = false;
-          emptyState.textContent = "Максимальный балл должен быть от 1 до 1000.";
+          emptyState.textContent = "Максимальный балл должен быть от 1 до 50.";
         }
         return;
       }
 
-      if (!materialFile.name.toLowerCase().endsWith(".txt")) {
+      const materialFileExtension = String(materialFile.name || "").toLowerCase().split(".").pop() || "";
+      if (!ALLOWED_ASSIGNMENT_MATERIAL_EXTENSIONS.has(materialFileExtension)) {
         if (emptyState) {
           emptyState.hidden = false;
-          emptyState.textContent = "Разрешены только .txt файлы.";
+          emptyState.textContent = "Недопустимый формат файла задания.";
         }
         return;
       }
@@ -1255,11 +1681,113 @@ function renderAssignmentsPage(session) {
   }
 }
 
+async function renderAdminAssignmentsPage(session) {
+  const list = document.getElementById("adminAssignmentsList");
+  const emptyState = document.getElementById("adminAssignmentsEmptyState");
+  const badge = document.getElementById("adminAssignmentsCountBadge");
+  const statusBox = document.getElementById("adminAssignmentsStatusBox");
+
+  if (!list || session.role !== "admin") {
+    return;
+  }
+
+  const showStatus = (text, isError = false) => {
+    if (!statusBox) {
+      return;
+    }
+    statusBox.hidden = false;
+    statusBox.textContent = text;
+    statusBox.style.color = isError ? "#b42318" : "var(--app-muted)";
+  };
+
+  const renderList = async () => {
+    const assignments = await apiRequest("/api/assignments");
+    list.innerHTML = "";
+    assignments.forEach((assignment) => {
+      const card = document.createElement("article");
+      card.className = "assignment-card";
+      card.innerHTML = `
+        <div class="assignment-card-header">
+          <strong>${escapeHtml(assignment.title)}</strong>
+          <span class="course-tag">${escapeHtml(assignment.type || "file")}</span>
+        </div>
+        <p>Предмет: ${escapeHtml(assignment.course_title || "Не указан")}</p>
+        <p>Преподаватель: ${escapeHtml(assignment.teacher_name || "Не указан")}</p>
+        <p>Дедлайн: ${formatAssignmentDeadline(assignment.deadline)}</p>
+        <p>Максимальный балл: ${Number(assignment.max_score) || 0}</p>
+        <div class="d-flex justify-content-end">
+          <button type="button" class="btn btn-outline-danger btn-sm" data-admin-delete-assignment="${assignment.id}">
+            Удалить задание
+          </button>
+        </div>
+      `;
+      list.appendChild(card);
+    });
+
+    if (badge) {
+      badge.textContent = `${assignments.length}`;
+    }
+
+    if (emptyState) {
+      emptyState.hidden = assignments.length > 0;
+      if (!emptyState.hidden) {
+        emptyState.textContent = "Задания не найдены.";
+      }
+    }
+  };
+
+  if (!list.dataset.bound) {
+    list.dataset.bound = "true";
+    list.addEventListener("click", async (event) => {
+      const button = event.target.closest("[data-admin-delete-assignment]");
+      if (!button) {
+        return;
+      }
+      const assignmentId = Number(button.dataset.adminDeleteAssignment || 0);
+      if (!assignmentId) {
+        return;
+      }
+      const confirmed = window.confirm("Удалить это задание? Действие нельзя отменить.");
+      if (!confirmed) {
+        return;
+      }
+      try {
+        await apiRequest(`/api/assignments/${assignmentId}`, { method: "DELETE" });
+        showStatus("Задание удалено.");
+        await renderList();
+      } catch (error) {
+        showStatus(error.message || "Не удалось удалить задание.", true);
+      }
+    });
+  }
+
+  try {
+    await renderList();
+  } catch (error) {
+    list.innerHTML = "";
+    if (badge) {
+      badge.textContent = "0";
+    }
+    if (emptyState) {
+      emptyState.hidden = false;
+      emptyState.textContent = error.message || "Не удалось загрузить задания.";
+    }
+  }
+}
+
 async function renderDirectoryPage(session) {
   const list = document.getElementById("directoryList");
   const emptyState = document.getElementById("directoryEmptyState");
   const badge = document.getElementById("directoryCountBadge");
   const title = document.getElementById("directoryTitle");
+  const teacherFilters = document.getElementById("directoryTeacherFilters");
+  const groupFilter = document.getElementById("directoryGroupFilter");
+  const studentSearch = document.getElementById("directoryStudentSearch");
+  const studentFilters = document.getElementById("directoryStudentFilters");
+  const subjectFilter = document.getElementById("directorySubjectFilter");
+  const teacherSearch = document.getElementById("directoryTeacherSearch");
+  const attendanceDateInput = document.getElementById("directoryAttendanceDate");
+  const attendanceStatusBox = document.getElementById("directoryAttendanceStatus");
 
   if (!list) {
     return;
@@ -1267,17 +1795,129 @@ async function renderDirectoryPage(session) {
 
   if (title) {
     title.textContent = session.role === "student"
-      ? "Список преподавателей"
+      ? "Мои преподаватели"
       : session.role === "teacher"
         ? "Список студентов"
         : "Список пользователей";
   }
 
-  try {
-    const users = await apiRequest("/api/users/directory");
-    list.innerHTML = "";
+  const extractStudentGroupFromBio = (bio) => {
+    const text = String(bio || "");
+    const labelMatch = text.match(/Группа:\s*([^\n]+)/i);
+    if (labelMatch && labelMatch[1]) {
+      return labelMatch[1].trim();
+    }
+    const fallbackMatch = text.match(/(\d{3}-\d{2}\s*[A-Za-zА-Яа-я]+)/);
+    return fallbackMatch ? fallbackMatch[1].trim() : "Без группы";
+  };
 
+  const transliterateRuToLat = (value) => {
+    const map = {
+      а: "a", б: "b", в: "v", г: "g", д: "d", е: "e", ё: "e", ж: "zh", з: "z", и: "i", й: "y",
+      к: "k", л: "l", м: "m", н: "n", о: "o", п: "p", р: "r", с: "s", т: "t", у: "u", ф: "f",
+      х: "h", ц: "ts", ч: "ch", ш: "sh", щ: "sch", ъ: "", ы: "y", ь: "", э: "e", ю: "yu", я: "ya",
+      ў: "u", қ: "q", ғ: "g", ҳ: "h", ң: "ng",
+    };
+    return String(value || "")
+      .toLowerCase()
+      .split("")
+      .map((char) => map[char] ?? char)
+      .join("");
+  };
+
+  const normalizeSearchText = (value) => String(value || "")
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/[’'`"]/g, "")
+    .replace(/[^a-zа-яё0-9]+/gi, " ")
+    .trim();
+
+  const matchesStudentSearch = (student, query) => {
+    const normalizedQuery = normalizeSearchText(query);
+    if (!normalizedQuery) {
+      return true;
+    }
+
+    const queryTokens = normalizedQuery.split(/\s+/).filter(Boolean);
+    const baseText = normalizeSearchText(`${student.full_name || ""} ${student.email || ""}`);
+    const transliteratedText = normalizeSearchText(transliterateRuToLat(`${student.full_name || ""} ${student.email || ""}`));
+    const transliteratedQuery = normalizeSearchText(transliterateRuToLat(normalizedQuery));
+
+    return queryTokens.every((token) => {
+      if (baseText.includes(token) || transliteratedText.includes(token)) {
+        return true;
+      }
+      if (transliteratedQuery && transliteratedText.includes(transliteratedQuery)) {
+        return true;
+      }
+      return false;
+    });
+  };
+
+  const isSundayDate = (value) => {
+    if (!value) {
+      return false;
+    }
+    const date = new Date(`${value}T00:00:00`);
+    if (Number.isNaN(date.getTime())) {
+      return false;
+    }
+    return date.getDay() === 0;
+  };
+
+  const getDefaultAttendanceDate = () => {
+    const now = new Date();
+    if (now.getDay() === 0) {
+      now.setDate(now.getDate() - 1);
+    }
+    return now.toISOString().slice(0, 10);
+  };
+
+  const showAttendanceStatus = (text, isError = false) => {
+    if (!attendanceStatusBox) {
+      return;
+    }
+    if (!text) {
+      attendanceStatusBox.hidden = true;
+      attendanceStatusBox.textContent = "";
+      attendanceStatusBox.style.removeProperty("color");
+      return;
+    }
+    attendanceStatusBox.hidden = false;
+    attendanceStatusBox.textContent = text;
+    attendanceStatusBox.style.color = isError ? "#b42318" : "var(--app-muted)";
+  };
+
+  const renderCards = (users, options = {}) => {
+    list.innerHTML = "";
     users.forEach((user) => {
+      const isTeacherView = session.role === "teacher" && user.role === "student";
+      const attendanceDate = options.attendanceDate || "";
+      const attendanceEnabled = Boolean(options.attendanceEnabled);
+      const attendanceMap = options.attendanceMap || new Map();
+      const markedNb = attendanceMap.get(user.id) === "NB";
+      const attendanceBlock = isTeacherView
+        ? `
+          <div class="d-flex align-items-center justify-content-between gap-2 mt-2">
+            <span class="submission-meta">Посещаемость ${attendanceDate ? `на ${escapeHtml(attendanceDate)}` : ""}</span>
+            <div class="directory-actions-row">
+              <button
+                type="button"
+                class="btn btn-sm ${markedNb ? "btn-danger" : "btn-outline-secondary"}"
+                data-attendance-toggle="${user.id}"
+                data-attendance-nb="${markedNb ? "1" : "0"}"
+                ${attendanceEnabled ? "" : "disabled"}
+              >
+                НБ
+              </button>
+              <a class="directory-chat-button inline" href="/messenger?peer=${user.id}" title="Открыть чат">
+                <i class="bi bi-chat-dots"></i>
+              </a>
+            </div>
+          </div>
+        `
+        : "";
       const teacherMeta = TEACHER_PROFILE_META[user.email] || {
         department: "Кафедра информационных технологий",
         office: "A101",
@@ -1286,22 +1926,27 @@ async function renderDirectoryPage(session) {
         ? `Кафедра: ${escapeHtml(teacherMeta.department)}`
         : `Курс: ${escapeHtml(STUDENT_PROFILE_META.direction)}`;
       const roleSecondaryLine = user.role === "teacher"
-        ? `<p>Кабинет: ${escapeHtml(teacherMeta.office)}</p>`
-        : "";
+        ? `<p>Предмет: ${escapeHtml(ADMIN_TEACHER_SUBJECTS[user.email] || "Не назначен")}</p><p>Кабинет: ${escapeHtml(teacherMeta.office)}</p>`
+        : `<p>Группа: ${escapeHtml(extractStudentGroupFromBio(user.bio))}</p>`;
 
       const card = document.createElement("article");
       card.className = "assignment-card directory-card";
       card.innerHTML = `
         <div class="assignment-card-header">
-          <strong>${escapeHtml(user.full_name)}</strong>
+          <strong class="directory-name-with-status">
+            <span class="directory-online-dot ${user.online ? "online" : "offline"}" aria-hidden="true"></span>
+            ${escapeHtml(user.full_name)}
+          </strong>
           <span class="course-tag">${user.role === "teacher" ? "Преподаватель" : "Студент"}</span>
         </div>
         <p>${roleSpecificLine}</p>
         ${roleSecondaryLine}
-        <p>Статус: ${user.online ? "В сети" : "Не в сети"}</p>
-        <a class="directory-chat-button" href="/messenger?peer=${user.id}" title="Открыть чат">
-          <i class="bi bi-chat-dots"></i>
-        </a>
+        ${attendanceBlock}
+        ${isTeacherView ? "" : `
+          <a class="directory-chat-button" href="/messenger?peer=${user.id}" title="Открыть чат">
+            <i class="bi bi-chat-dots"></i>
+          </a>
+        `}
       `;
       list.appendChild(card);
     });
@@ -1316,6 +1961,250 @@ async function renderDirectoryPage(session) {
         emptyState.textContent = "Пользователи не найдены.";
       }
     }
+  };
+
+  try {
+    const users = await apiRequest("/api/users/directory");
+
+    if (session.role === "student") {
+      if (teacherFilters) {
+        teacherFilters.hidden = true;
+      }
+      showAttendanceStatus("");
+      if (studentFilters) {
+        studentFilters.hidden = false;
+      }
+
+      const scheduleData = await (async () => {
+        try {
+          return await apiRequest("/api/schedule");
+        } catch {
+          return { days: [] };
+        }
+      })();
+
+      const scheduleSubjectsByCode = new Map();
+      (scheduleData.days || []).forEach((day) => {
+        (day.lessons || []).forEach((lesson) => {
+          const rawSubject = String(lesson.subject || "").trim();
+          const subjectCode = extractSubjectCode(rawSubject);
+          if (!rawSubject || !subjectCode || scheduleSubjectsByCode.has(subjectCode)) {
+            return;
+          }
+          scheduleSubjectsByCode.set(subjectCode, normalizeSubjectTitle(rawSubject) || rawSubject);
+        });
+      });
+
+      const teachers = users
+        .filter((user) => user.role === "teacher")
+        .map((teacher) => {
+          const subjectMeta = String(ADMIN_TEACHER_SUBJECTS[teacher.email] || "");
+          const subjectCode = extractSubjectCode(subjectMeta);
+          return {
+            ...teacher,
+            subjectCode,
+            subjectTitle: scheduleSubjectsByCode.get(subjectCode) || normalizeSubjectTitle(subjectMeta) || subjectMeta || "Предмет не назначен",
+          };
+        })
+        .filter((teacher) => teacher.subjectCode && scheduleSubjectsByCode.has(teacher.subjectCode))
+        .sort((a, b) => String(a.full_name || "").localeCompare(String(b.full_name || ""), "ru"));
+
+      if (subjectFilter) {
+        const subjectOptions = Array.from(scheduleSubjectsByCode.entries())
+          .sort((a, b) => String(a[1]).localeCompare(String(b[1]), "ru"))
+          .map(([code, label]) => `<option value="${escapeHtml(code)}">${escapeHtml(label)}</option>`)
+          .join("");
+        subjectFilter.innerHTML = `<option value="">Все предметы</option>${subjectOptions}`;
+      }
+
+      const applyStudentFilters = () => {
+        const selectedSubject = String(subjectFilter?.value || "");
+        const teacherQuery = String(teacherSearch?.value || "").trim().toLowerCase();
+        const filtered = teachers.filter((teacher) => {
+          const bySubject = !selectedSubject || teacher.subjectCode === selectedSubject;
+          const byName = !teacherQuery || matchesStudentSearch(teacher, teacherQuery);
+          return bySubject && byName;
+        });
+        renderCards(filtered);
+      };
+
+      if (subjectFilter && !subjectFilter.dataset.bound) {
+        subjectFilter.dataset.bound = "true";
+        subjectFilter.addEventListener("change", () => {
+          applyStudentFilters();
+        });
+      }
+
+      if (teacherSearch && !teacherSearch.dataset.bound) {
+        teacherSearch.dataset.bound = "true";
+        teacherSearch.addEventListener("input", () => {
+          applyStudentFilters();
+        });
+      }
+
+      applyStudentFilters();
+      return;
+    }
+
+    if (studentFilters) {
+      studentFilters.hidden = true;
+    }
+
+    if (session.role !== "teacher") {
+      if (teacherFilters) {
+        teacherFilters.hidden = true;
+      }
+      showAttendanceStatus("");
+      renderCards(users);
+      return;
+    }
+
+    if (teacherFilters) {
+      teacherFilters.hidden = false;
+    }
+    if (attendanceDateInput && !attendanceDateInput.value) {
+      attendanceDateInput.value = getDefaultAttendanceDate();
+    }
+
+    const students = users
+      .map((user) => ({ ...user, group: extractStudentGroupFromBio(user.bio) }))
+      .sort((a, b) => a.full_name.localeCompare(b.full_name, "ru"));
+    const groups = [...new Set(students.map((student) => student.group))].sort((a, b) => a.localeCompare(b, "ru"));
+
+    if (groupFilter) {
+      groupFilter.innerHTML = `<option value="">Выберите группу</option>${groups
+        .map((group) => `<option value="${escapeHtml(group)}">${escapeHtml(group)}</option>`)
+        .join("")}`;
+    }
+
+    const loadAttendanceMap = async (attendanceDate) => {
+      if (!attendanceDate || isSundayDate(attendanceDate)) {
+        return new Map();
+      }
+      const rows = await apiRequest(`/api/users/attendance?date=${encodeURIComponent(attendanceDate)}`);
+      return new Map((rows || []).map((row) => [Number(row.student_id), row.status]));
+    };
+
+    const applyTeacherFilters = async () => {
+      const selectedGroup = groupFilter?.value || "";
+      const searchQuery = String(studentSearch?.value || "").trim().toLowerCase();
+      const attendanceDate = String(attendanceDateInput?.value || "");
+      const attendanceDateAllowed = Boolean(attendanceDate) && !isSundayDate(attendanceDate);
+
+      if (!selectedGroup) {
+        if (studentSearch) {
+          studentSearch.disabled = true;
+          studentSearch.value = "";
+        }
+        renderCards([], {
+          attendanceDate,
+          attendanceEnabled: attendanceDateAllowed,
+          attendanceMap: new Map(),
+        });
+        if (emptyState) {
+          emptyState.hidden = false;
+          emptyState.textContent = "Выберите группу, чтобы увидеть студентов.";
+        }
+        showAttendanceStatus("");
+        return;
+      }
+
+      const inGroup = students.filter((student) => student.group === selectedGroup);
+      if (studentSearch) {
+        studentSearch.disabled = false;
+      }
+
+      const filtered = searchQuery
+        ? inGroup.filter((student) => matchesStudentSearch(student, searchQuery))
+        : inGroup;
+      if (attendanceDate && !attendanceDateAllowed) {
+        showAttendanceStatus("На воскресенье отметку НБ ставить нельзя. Выбери другую дату.", true);
+        renderCards(filtered, {
+          attendanceDate,
+          attendanceEnabled: false,
+          attendanceMap: new Map(),
+        });
+        return;
+      }
+
+      let attendanceMap = new Map();
+      if (attendanceDateAllowed) {
+        try {
+          attendanceMap = await loadAttendanceMap(attendanceDate);
+          showAttendanceStatus("");
+        } catch (error) {
+          showAttendanceStatus(error.message || "Не удалось загрузить посещаемость.", true);
+        }
+      } else {
+        showAttendanceStatus("Выбери дату, чтобы выставлять НБ.");
+      }
+
+      renderCards(filtered, {
+        attendanceDate,
+        attendanceEnabled: attendanceDateAllowed,
+        attendanceMap,
+      });
+    };
+
+    if (groupFilter && !groupFilter.dataset.bound) {
+      groupFilter.dataset.bound = "true";
+      groupFilter.addEventListener("change", async () => {
+        if (studentSearch) {
+          studentSearch.value = "";
+        }
+        await applyTeacherFilters();
+      });
+    }
+
+    if (studentSearch && !studentSearch.dataset.bound) {
+      studentSearch.dataset.bound = "true";
+      studentSearch.addEventListener("input", async () => {
+        await applyTeacherFilters();
+      });
+    }
+
+    if (attendanceDateInput && !attendanceDateInput.dataset.bound) {
+      attendanceDateInput.dataset.bound = "true";
+      attendanceDateInput.addEventListener("change", async () => {
+        await applyTeacherFilters();
+      });
+    }
+
+    if (!list.dataset.attendanceBound) {
+      list.dataset.attendanceBound = "true";
+      list.addEventListener("click", async (event) => {
+        const button = event.target.closest("[data-attendance-toggle]");
+        if (!button) {
+          return;
+        }
+        const studentId = Number(button.dataset.attendanceToggle || 0);
+        const attendanceDate = String(attendanceDateInput?.value || "");
+        if (!studentId || !attendanceDate) {
+          showAttendanceStatus("Сначала выбери дату посещаемости.", true);
+          return;
+        }
+        if (isSundayDate(attendanceDate)) {
+          showAttendanceStatus("На воскресенье отметку НБ ставить нельзя.", true);
+          return;
+        }
+        const currentlyNb = button.dataset.attendanceNb === "1";
+        try {
+          await apiRequest(`/api/users/${studentId}/attendance`, {
+            method: "POST",
+            body: JSON.stringify({
+              date: attendanceDate,
+              is_absent: !currentlyNb,
+            }),
+          });
+          showAttendanceStatus(!currentlyNb ? "Отметка НБ сохранена." : "Отметка НБ снята.");
+          await applyTeacherFilters();
+        } catch (error) {
+          showAttendanceStatus(error.message || "Не удалось обновить посещаемость.", true);
+        }
+      });
+    }
+
+    await applyTeacherFilters();
   } catch (error) {
     list.innerHTML = "";
     if (badge) {
@@ -1952,6 +2841,29 @@ function renderMessengerPage(session) {
   const params = new URLSearchParams(window.location.search);
   const preferredPeerId = Number(params.get("peer") || "0");
   const hasPreferredPeer = Number.isInteger(preferredPeerId) && preferredPeerId > 0;
+  const autoResizeMessageInput = () => {
+    messageInput.style.height = "auto";
+    const nextHeight = Math.min(messageInput.scrollHeight, 160);
+    messageInput.style.height = `${Math.max(nextHeight, 44)}px`;
+  };
+  autoResizeMessageInput();
+  if (!messageInput.dataset.boundAutosize) {
+    messageInput.dataset.boundAutosize = "true";
+    messageInput.addEventListener("input", autoResizeMessageInput);
+  }
+  if (!messageInput.dataset.boundEnterSend) {
+    messageInput.dataset.boundEnterSend = "true";
+    messageInput.addEventListener("keydown", (event) => {
+      if (event.key !== "Enter") {
+        return;
+      }
+      if (event.shiftKey) {
+        return;
+      }
+      event.preventDefault();
+      messageForm.requestSubmit();
+    });
+  }
 
   const renderChatMessages = (chatData) => {
     const isDirect = chatData.chat_type === "direct";
@@ -2067,14 +2979,12 @@ function renderMessengerPage(session) {
         await apiRequest(`/api/chats/${state.activeChatId}/messages`, {
           method: "POST",
           body: JSON.stringify({
-            sender_id: session.userId || 0,
-            sender_name: session.name || "",
             content,
             message_type: "text",
-            created_at: new Date().toISOString(),
           }),
         });
         messageInput.value = "";
+        autoResizeMessageInput();
         await openChat(state.activeChatId);
       } catch (error) {
         metaElement.textContent = error.message || "Не удалось отправить сообщение.";
@@ -2181,8 +3091,11 @@ if (!isAuthPage()) {
   }, 120_000);
   setupLogout();
   renderProfileInfo(session);
+  renderStudentGpa(session);
+  renderStudentAttendance(session);
   renderSchedulePage(session);
   renderAssignmentsPage(session);
+  renderAdminAssignmentsPage(session);
   renderDirectoryPage(session);
   renderAdminPage(session);
   renderAdminModerationPage(session);

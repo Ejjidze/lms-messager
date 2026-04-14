@@ -35,8 +35,5 @@ class ChatWithMessages(Chat):
 
 
 class MessageCreate(BaseModel):
-    sender_id: int
-    sender_name: str
     content: str
     message_type: Literal["text", "image", "file"] = "text"
-    created_at: datetime

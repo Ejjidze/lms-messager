@@ -23,6 +23,7 @@ DIRECTORY_FILE = PROJECT_ROOT / "directory.html"
 MESSENGER_FILE = PROJECT_ROOT / "messenger.html"
 PROFILE_FILE = PROJECT_ROOT / "profile.html"
 ADMIN_FILE = PROJECT_ROOT / "admin.html"
+ADMIN_ASSIGNMENTS_FILE = PROJECT_ROOT / "admin-assignments.html"
 ADMIN_MODERATION_FILE = PROJECT_ROOT / "admin-moderation.html"
 ADMIN_SETTINGS_FILE = PROJECT_ROOT / "admin-settings.html"
 STYLES_FILE = PROJECT_ROOT / "styles.css"
@@ -121,6 +122,11 @@ def frontend_profile() -> FileResponse:
 @app.get("/admin", include_in_schema=False)
 def frontend_admin() -> FileResponse:
     return frontend_file_response(ADMIN_FILE)
+
+
+@app.get("/admin/assignments", include_in_schema=False)
+def frontend_admin_assignments() -> FileResponse:
+    return frontend_file_response(ADMIN_ASSIGNMENTS_FILE)
 
 
 @app.get("/admin/moderation", include_in_schema=False)

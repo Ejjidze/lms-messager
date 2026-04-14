@@ -1,6 +1,6 @@
-from datetime import datetime
+from datetime import date, datetime
 
-from sqlalchemy import JSON, Boolean, DateTime, ForeignKey, Integer, String, Text
+from sqlalchemy import JSON, Boolean, Date, DateTime, ForeignKey, Integer, String, Text, UniqueConstraint
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.database import Base
@@ -254,6 +254,24 @@ class Grade(Base):
     submission: Mapped["Submission"] = relationship(back_populates="grade_record")
     student: Mapped["User"] = relationship(back_populates="grades_received", foreign_keys=[student_id])
     teacher: Mapped["User"] = relationship(back_populates="grades_given", foreign_keys=[teacher_id])
+
+
+class AttendanceRecord(Base):
+    __tablename__ = "attendance_records"
+    __table_args__ = (
+        UniqueConstraint("teacher_id", "student_id", "attendance_date", name="uq_attendance_teacher_student_date"),
+    )
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
+    teacher_id: Mapped[int] = mapped_column(ForeignKey("users.id"), index=True)
+    student_id: Mapped[int] = mapped_column(ForeignKey("users.id"), index=True)
+    attendance_date: Mapped[date] = mapped_column(Date, index=True)
+    status: Mapped[str] = mapped_column(String(10), default="NB")
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+    updated_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+    teacher: Mapped["User"] = relationship(foreign_keys=[teacher_id])
+    student: Mapped["User"] = relationship(foreign_keys=[student_id])
 
 
 class Notification(Base):

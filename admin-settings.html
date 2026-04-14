@@ -22,6 +22,10 @@
         </span>
       </a>
       <div class="d-flex align-items-center gap-2 gap-lg-3 ms-auto topbar-meta">
+        <div class="topbar-time d-none d-md-grid">
+          <span>Время сервера</span>
+          <strong>31.03.2026 | 09:08</strong>
+        </div>
         <button class="btn btn-outline-secondary btn-sm" type="button" data-logout-button>Выйти</button>
         <div class="topbar-avatar" data-user-avatar>NG</div>
       </div>
@@ -37,11 +41,12 @@
               <p class="section-label mb-3">Навигация</p>
               <nav class="main-nav">
                 <a href="/profile" class="nav-link">Профиль</a>
-                <a href="/schedule" class="nav-link">Расписание</a>
                 <a href="/assignments" class="nav-link">Задания</a>
                 <a href="/directory" class="nav-link">Пользователи</a>
                 <a href="/messenger" class="nav-link">Мессенджер</a>
                 <a href="/admin" class="nav-link" data-admin-only="true">Админ-панель</a>
+                <a href="/admin/assignments" class="nav-link" data-admin-only="true">Управление заданиями</a>
+                <a href="/schedule" class="nav-link">Расписание</a>
                 <a href="/admin/moderation" class="nav-link" data-admin-only="true">Модерация</a>
                 <a href="/admin/settings" class="nav-link active" data-admin-only="true">Настройки</a>
               </nav>

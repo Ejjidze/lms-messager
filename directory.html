@@ -22,6 +22,10 @@
         </span>
       </a>
       <div class="d-flex align-items-center gap-2 gap-lg-3 ms-auto topbar-meta">
+        <div class="topbar-time d-none d-md-grid">
+          <span>Время сервера</span>
+          <strong>31.03.2026 | 09:08</strong>
+        </div>
         <button class="btn btn-outline-secondary btn-sm" type="button" data-logout-button>Выйти</button>
         <div class="topbar-avatar" data-user-avatar>NG</div>
       </div>
@@ -37,11 +41,11 @@
               <p class="section-label mb-3">Навигация</p>
               <nav class="main-nav">
                 <a href="/profile" class="nav-link">Профиль</a>
-                <a href="/schedule" class="nav-link">Расписание</a>
                 <a href="/assignments" class="nav-link">Задания</a>
                 <a href="/directory" class="nav-link active">Пользователи</a>
                 <a href="/messenger" class="nav-link">Мессенджер</a>
                 <a href="/admin" class="nav-link" data-admin-only="true">Админ-панель</a>
+                <a href="/schedule" class="nav-link">Расписание</a>
                 <a href="/admin/moderation" class="nav-link" data-admin-only="true">Модерация</a>
                 <a href="/admin/settings" class="nav-link" data-admin-only="true">Настройки</a>
               </nav>
@@ -62,6 +66,47 @@
                 <span class="badge text-bg-light rounded-pill" id="directoryCountBadge">0</span>
               </div>
             </div>
+
+            <div class="row g-2 mt-3" id="directoryTeacherFilters" data-teacher-only="true" hidden>
+              <div class="col-12 col-md-4">
+                <label class="form-label mb-1" for="directoryGroupFilter">Группа</label>
+                <select class="form-select" id="directoryGroupFilter">
+                  <option value="">Выберите группу</option>
+                </select>
+              </div>
+              <div class="col-12 col-md-4">
+                <label class="form-label mb-1" for="directoryStudentSearch">Студент</label>
+                <input
+                  class="form-control"
+                  id="directoryStudentSearch"
+                  type="search"
+                  placeholder="Поиск студента по ФИО"
+                  disabled
+                >
+              </div>
+              <div class="col-12 col-md-4">
+                <label class="form-label mb-1" for="directoryAttendanceDate">Дата посещаемости (НБ)</label>
+                <input class="form-control" id="directoryAttendanceDate" type="date">
+              </div>
+            </div>
+            <div class="row g-2 mt-3" id="directoryStudentFilters" hidden>
+              <div class="col-12 col-md-6">
+                <label class="form-label mb-1" for="directorySubjectFilter">Предмет</label>
+                <select class="form-select" id="directorySubjectFilter">
+                  <option value="">Все предметы</option>
+                </select>
+              </div>
+              <div class="col-12 col-md-6">
+                <label class="form-label mb-1" for="directoryTeacherSearch">Преподаватель</label>
+                <input
+                  class="form-control"
+                  id="directoryTeacherSearch"
+                  type="search"
+                  placeholder="Поиск преподавателя"
+                >
+              </div>
+            </div>
+            <div class="assignment-empty-state mt-3" id="directoryAttendanceStatus" hidden></div>
 
             <div class="assignment-list mt-4" id="directoryList"></div>
             <div class="assignment-empty-state mt-4" id="directoryEmptyState" hidden>Список пуст.</div>

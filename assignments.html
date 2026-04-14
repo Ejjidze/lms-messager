@@ -22,6 +22,10 @@
         </span>
       </a>
       <div class="d-flex align-items-center gap-2 gap-lg-3 ms-auto topbar-meta">
+        <div class="topbar-time d-none d-md-grid">
+          <span>Время сервера</span>
+          <strong>31.03.2026 | 09:08</strong>
+        </div>
         <button class="btn btn-outline-secondary btn-sm" type="button" data-logout-button>Выйти</button>
         <div class="topbar-avatar" data-user-avatar>NG</div>
       </div>
@@ -37,11 +41,11 @@
               <p class="section-label mb-3">Навигация</p>
               <nav class="main-nav">
                 <a href="/profile" class="nav-link">Профиль</a>
-                <a href="/schedule" class="nav-link">Расписание</a>
                 <a href="/assignments" class="nav-link active">Предметы</a>
                 <a href="/directory" class="nav-link">Пользователи</a>
                 <a href="/messenger" class="nav-link">Мессенджер</a>
                 <a href="/admin" class="nav-link" data-admin-only="true">Админ-панель</a>
+                <a href="/schedule" class="nav-link">Расписание</a>
                 <a href="/admin/moderation" class="nav-link" data-admin-only="true">Модерация</a>
                 <a href="/admin/settings" class="nav-link" data-admin-only="true">Настройки</a>
               </nav>
@@ -74,24 +78,62 @@
 
               <form id="assignmentCreateForm" class="row g-3 mt-1">
                 <div class="col-12 col-lg-6">
-                  <label class="form-label" for="assignmentTitle">Название задания</label>
-                  <input id="assignmentTitle" name="title" class="form-control" type="text" required>
+                  <input
+                    id="assignmentTitle"
+                    name="title"
+                    class="form-control"
+                    type="text"
+                    placeholder="Название задания"
+                    aria-label="Название задания"
+                    required
+                  >
                 </div>
                 <div class="col-12 col-lg-6">
-                  <label class="form-label" for="assignmentDeadline">Дедлайн</label>
-                  <input id="assignmentDeadline" name="deadline" class="form-control" type="date" required>
+                  <input
+                    id="assignmentDeadline"
+                    name="deadline"
+                    class="form-control"
+                    type="date"
+                    placeholder="Дедлайн"
+                    aria-label="Дедлайн"
+                    required
+                  >
                 </div>
                 <div class="col-12 col-lg-6">
-                  <label class="form-label" for="assignmentMaxScore">Максимальный балл</label>
-                  <input id="assignmentMaxScore" name="max_score" class="form-control" type="number" min="1" max="1000" value="100" required>
+                  <input
+                    id="assignmentMaxScore"
+                    name="max_score"
+                    class="form-control"
+                    type="number"
+                    min="1"
+                    max="50"
+                    value="5"
+                    placeholder="Максимальный балл (1-50)"
+                    aria-label="Максимальный балл"
+                    required
+                  >
                 </div>
                 <div class="col-12">
-                  <label class="form-label" for="assignmentMaterialFile">Текстовый файл задания (.txt)</label>
-                  <input id="assignmentMaterialFile" name="file" class="form-control" type="file" accept=".txt,text/plain" required>
+                  <input
+                    id="assignmentMaterialFile"
+                    name="file"
+                    class="form-control"
+                    type="file"
+                    accept=".txt,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.png,.jpg,.jpeg,.gif,.webp,.bmp,.tif,.tiff,.zip,.rar,.7z,.tar,.gz"
+                    title="Поддерживаются: TXT, DOC, DOCX, XLS, XLSX, PPT, PPTX, PNG, JPG, JPEG, GIF, WEBP, BMP, TIF, TIFF, ZIP, RAR, 7Z, TAR, GZ"
+                    aria-label="Файл задания"
+                    required
+                  >
                 </div>
                 <div class="col-12">
-                  <label class="form-label" for="assignmentDescription">Описание</label>
-                  <textarea id="assignmentDescription" name="description" class="form-control" rows="4" placeholder="Опиши, что должен сделать студент"></textarea>
+                  <textarea
+                    id="assignmentDescription"
+                    name="description"
+                    class="form-control"
+                    rows="4"
+                    placeholder="Описание задания"
+                    aria-label="Описание задания"
+                  ></textarea>
                 </div>
                 <div class="col-12">
                   <button type="submit" class="primary-button">Опубликовать задание</button>

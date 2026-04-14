@@ -135,7 +135,7 @@ def create_message(
         attachment_url=None,
         attachment_mime_type=None,
         status="sent",
-        created_at=payload.created_at,
+        created_at=datetime.now(),
     )
     db.add(new_message)
     db.commit()
@@ -172,7 +172,7 @@ def upload_chat_attachment(
         attachment_url=file_url,
         attachment_mime_type=mime_type,
         status="sent",
-        created_at=datetime.utcnow(),
+        created_at=datetime.now(),
     )
     db.add(message)
     db.commit()

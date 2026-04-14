@@ -3,13 +3,13 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>EduFlow LMS - Расписание</title>
+  <title>EduFlow LMS - Управление заданиями</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Manrope:wght@500;700;800&display=swap" rel="stylesheet">
   <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
   <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css" rel="stylesheet">
-  <link rel="stylesheet" href="styles.css">
+  <link rel="stylesheet" href="/styles.css">
 </head>
 <body data-protected-page="true">
   <nav class="navbar navbar-light bg-white border-bottom shadow-sm sticky-top app-navbar">
@@ -21,7 +21,6 @@
           <span class="brand-title">EduFlow LMS</span>
         </span>
       </a>
-
       <div class="d-flex align-items-center gap-2 gap-lg-3 ms-auto topbar-meta">
         <div class="topbar-time d-none d-md-grid">
           <span>Время сервера</span>
@@ -46,8 +45,8 @@
                 <a href="/directory" class="nav-link">Пользователи</a>
                 <a href="/messenger" class="nav-link">Мессенджер</a>
                 <a href="/admin" class="nav-link" data-admin-only="true">Админ-панель</a>
-                <a href="/admin/assignments" class="nav-link" data-admin-only="true">Управление заданиями</a>
-                <a href="/schedule" class="nav-link active">Расписание</a>
+                <a href="/admin/assignments" class="nav-link active" data-admin-only="true">Управление заданиями</a>
+                <a href="/schedule" class="nav-link">Расписание</a>
                 <a href="/admin/moderation" class="nav-link" data-admin-only="true">Модерация</a>
                 <a href="/admin/settings" class="nav-link" data-admin-only="true">Настройки</a>
               </nav>
@@ -57,19 +56,20 @@
       </aside>
 
       <main class="col-12 col-xl-9">
-        <div class="d-flex justify-content-end align-items-center gap-2 mb-3" id="scheduleAdminControls" data-admin-only="true" hidden>
-          <label for="scheduleGroupSelect" class="form-label mb-0 me-1">Группа:</label>
-          <select id="scheduleGroupSelect" class="form-select form-select-sm" style="max-width: 180px;">
-            <option value="321">321-23 DIr</option>
-            <option value="320">320-23 DIr</option>
-          </select>
-          <button type="button" class="btn btn-outline-secondary btn-sm" id="scheduleEditToggle">Редактировать расписание</button>
-          <button type="button" class="btn btn-primary btn-sm" id="scheduleSaveButton" hidden>Сохранить</button>
-          <button type="button" class="btn btn-outline-secondary btn-sm" id="scheduleCancelButton" hidden>Отмена</button>
-        </div>
-        <div id="scheduleStatusBox" class="mb-3"></div>
-        <div class="schedule-sheet" id="scheduleSheet">
-        </div>
+        <section class="card border-0 shadow-sm">
+          <div class="card-body p-4">
+            <div class="panel-header">
+              <div>
+                <p class="section-label mb-1">Admin Assignments</p>
+                <h1 class="h3 mb-0 hero-title">Управление заданиями</h1>
+              </div>
+              <span class="badge text-bg-light rounded-pill" id="adminAssignmentsCountBadge">0</span>
+            </div>
+            <div class="assignment-list mt-4" id="adminAssignmentsList"></div>
+            <div class="assignment-empty-state mt-3" id="adminAssignmentsEmptyState" hidden>Задания не найдены.</div>
+            <div class="assignment-empty-state mt-3" id="adminAssignmentsStatusBox" hidden></div>
+          </div>
+        </section>
       </main>
     </div>
   </div>
