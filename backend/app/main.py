@@ -29,6 +29,7 @@ ADMIN_SETTINGS_FILE = PROJECT_ROOT / "admin-settings.html"
 STYLES_FILE = PROJECT_ROOT / "styles.css"
 APP_JS_FILE = PROJECT_ROOT / "app.js"
 SITE_JS_FILE = PROJECT_ROOT / "site.js"
+MODULES_DIR = PROJECT_ROOT / "modules"
 
 
 def frontend_file_response(path: Path, media_type: str | None = None) -> FileResponse:
@@ -71,6 +72,11 @@ app.mount(
     settings.media_url,
     StaticFiles(directory=media_directory),
     name="media",
+)
+app.mount(
+    "/modules",
+    StaticFiles(directory=MODULES_DIR),
+    name="modules",
 )
 
 
